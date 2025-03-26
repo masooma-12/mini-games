@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludo Game 🎲</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background: #fff;
+            border: 4px solid #333;
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+        }
+
+        .cell {
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cell.red {
+            background: #ffcccc;
+        }
+
+        .cell.green {
+            background: #ccffcc;
+        }
+
+        .cell.blue {
+            background: #ccccff;
+        }
+
+        .cell.yellow {
+            background: #ffffcc;
+        }
+
+        .token {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .token.red {
+            background: #ff0000;
+        }
+
+        .token.green {
+            background: #00ff00;
+        }
+
+        .token.blue {
+            background: #0000ff;
+        }
+
+        .token.yellow {
+            background: #ffff00;
+        }
+
+        .dice {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background: #333;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .turn-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Ludo Board -->
+        <div class="cell red"></div>
+        <div class="cell green"></div>
+        <div class="cell blue"></div>
+        <div class="cell yellow"></div>
+        <!-- Tokens will be dynamically added here -->
+        <div class="dice" id="dice">🎲</div>
+        <div class="turn-indicator" id="turnIndicator">Red's Turn</div>
+    </div>
+
+    <script>
+        const gameContainer = document.querySelector('.game-container');
+        const dice = document.getElementById('dice');
+        const turnIndicator = document.getElementById('turnIndicator');
+
+        // Game variables
+        const players = ['red', 'green', 'blue', 'yellow'];
+        let currentPlayerIndex = 0;
+        let diceValue = 0;
+        let tokens = {
+            red: [],
+            green: [],
+            blue: [],
+            yellow: []
+        };
+
+        // Initialize game
+        function initGame() {
+            // Create tokens for each player
+            players.forEach(player => {
+                for (let i = 0; i < 4; i++) {
+                    const token = document.createElement('div');
+                    token.classList.add('token', player);
+                    token.dataset.player = player;
+                    token.dataset.position = i;
+                    tokens[player].push(token);
+                    gameContainer.appendChild(token);
+                }
+            });
+
+            // Position tokens in their starting areas
+            positionTokens();
+        }
+
+        // Position tokens in their starting areas
+        function positionTokens() {
+            players.forEach(player => {
+                tokens[player].forEach((token, index) => {
+                    const startCell = document.querySelector(`.cell.${player}`);
+                    token.style.gridColumn = startCell.style.gridColumn;
+                    token.style.gridRow = startCell.style.gridRow;
+                });
+            });
+        }
+
+        // Roll the dice
+        dice.addEventListener('click', () => {
+            if (diceValue === 0) {
+                diceValue = Math.floor(Math.random() * 6) + 1;
+                dice.textContent = diceValue;
+                moveToken();
+            }
+        });
+
+        // Move token
+        function moveToken() {
+            const currentPlayer = players[currentPlayerIndex];
+            const token = tokens[currentPlayer][0]; // Move the first token for simplicity
+
+            // Move token based on dice value
+            const steps = diceValue;
+            let newPosition = (parseInt(token.dataset.position) + steps) % 52; // 52 cells in the Ludo board
+
+            // Update token position
+            token.dataset.position = newPosition;
+            updateTokenPosition(token);
+
+            // Check for win condition
+            if (newPosition === 51) {
+                alert(`${currentPlayer} wins!`);
+                resetGame();
+            }
+
+            // Switch to the next player
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            turnIndicator.textContent = `${players[currentPlayerIndex]}'s Turn`;
+            diceValue = 0;
+            dice.textContent = '🎲';
+        }
+
+        // Update token position on the board
+        function updateTokenPosition(token) {
+            const cell = document.querySelector(`.cell:nth-child(${parseInt(token.dataset.position) + 1})`);
+            token.style.gridColumn = cell.style.gridColumn;
+            token.style.gridRow = cell.style.gridRow;
+        }
+
+        // Reset game
+        function resetGame() {
+            players.forEach(player => {
+                tokens[player].forEach(token => {
+                    token.dataset.position = 0;
+                });
+            });
+            positionTokens();
+            currentPlayerIndex = 0;
+            turnIndicator.textContent = `${players[currentPlayerIndex]}'s Turn`;
+        }
+
+        // Start game
+        initGame();
+    </script>
+</body>
+</html>

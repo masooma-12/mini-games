@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Fall Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #game-container {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    
+    #game-board {
+      border: 2px solid #444;
+      background-color: black;
+      display: grid;
+    }
+    
+    #sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 150px;
+    }
+    
+    .cell {
+      border: 1px solid #333;
+      box-sizing: border-box;
+    }
+    
+    .info-box {
+      background-color: rgba(50, 50, 50, 0.7);
+      border: 1px solid #444;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    
+    .next-piece-container {
+      display: grid;
+      grid-template-columns: repeat(4, 20px);
+      grid-template-rows: repeat(4, 20px);
+      background-color: black;
+      margin-top: 10px;
+    }
+    
+    .next-cell {
+      border: 1px solid #333;
+      box-sizing: border-box;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 2px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    #game-over-screen, #start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    
+    #game-over-screen {
+      display: none;
+    }
+    
+    .screen-content {
+      background-color: #222;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    h1 {
+      color: #4CAF50;
+      margin-top: 0;
+    }
+    
+    .controls {
+      margin-top: 20px;
+      text-align: left;
+      font-size: 14px;
+    }
+    
+    kbd {
+      background-color: #333;
+      padding: 2px 5px;
+      border-radius: 3px;
+      border: 1px solid #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="start-screen">
+    <div class="screen-content">
+      <h1>Block Fall Game</h1>
+      <p>Clear lines to score points!</p>
+      <button id="start-button">Start Game</button>
+      <div class="controls">
+        <p><kbd>←</kbd> / <kbd>→</kbd>: Move left/right</p>
+        <p><kbd>↓</kbd>: Soft drop</p>
+        <p><kbd>Space</kbd>: Hard drop</p>
+        <p><kbd>↑</kbd>: Rotate</p>
+      </div>
+    </div>
+  </div>
+  
+  <div id="game-container">
+    <div id="game-board"></div>
+    <div id="sidebar">
+      <div class="info-box">
+        <h3>Score: <span id="score">0</span></h3>
+        <h3>Level: <span id="level">1</span></h3>
+        <h3>Lines: <span id="lines">0</span></h3>
+        <h3>High Score: <span id="high-score">0</span></h3>
+      </div>
+      <div class="info-box">
+        <h3>Next Piece:</h3>
+        <div class="next-piece-container" id="next-piece"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="game-over-screen">
+    <div class="screen-content">
+      <h1>Game Over!</h1>
+      <p>Your Score: <span id="final-score">0</span></p>
+      <p>High Score: <span id="final-high-score">0</span></p>
+      <button id="restart-button">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // Game settings
+    const INITIAL_GRID_SIZE = 8;
+    const INITIAL_CELL_SIZE = 30;
+    let currentGridSize = INITIAL_GRID_SIZE;
+    let cellSize = INITIAL_CELL_SIZE;
+    
+    // Game state
+    let board = [];
+    let currentPiece = null;
+    let nextPiece = null;
+    let score = 0;
+    let level = 1;
+    let lines = 0;
+    let highScore = localStorage.getItem('blockFallHighScore') || 0;
+    let gameInterval = null;
+    let isPaused = false;
+    let gameStarted = false;
+    
+    // DOM Elements
+    const gameBoard = document.getElementById('game-board');
+    const scoreElement = document.getElementById('score');
+    const levelElement = document.getElementById('level');
+    const linesElement = document.getElementById('lines');
+    const highScoreElement = document.getElementById('high-score');
+    const nextPieceElement = document.getElementById('next-piece');
+    const startScreen = document.getElementById('start-screen');
+    const startButton = document.getElementById('start-button');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const restartButton = document.getElementById('restart-button');
+    const finalScoreElement = document.getElementById('final-score');
+    const finalHighScoreElement = document.getElementById('final-high-score');
+    
+    // Block colors
+    const colors = [
+      '#FF0000', // Red
+      '#00FF00', // Green
+      '#0000FF', // Blue
+      '#FFFF00', // Yellow
+      '#FF00FF', // Magenta
+      '#00FFFF', // Cyan
+      '#FFA500', // Orange
+    ];
+    
+    // Tetromino shapes
+    const tetrominoes = [
+      // I piece
+      [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ],
+      // J piece
+      [
+        [1, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      // L piece
+      [
+        [0, 0, 1],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      // O piece
+      [
+        [1, 1],
+        [1, 1]
+      ],
+      // S piece
+      [
+        [0, 1, 1],
+        [1, 1, 0],
+        [0, 0, 0]
+      ],
+      // T piece
+      [
+        [0, 1, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      // Z piece
+      [
+        [1, 1, 0],
+        [0, 1, 1],
+        [0, 0, 0]
+      ]
+    ];
+    
+    // Initialize the game
+    function init() {
+      highScoreElement.textContent = highScore;
+      setupEventListeners();
+    }
+    
+    // Set up event listeners
+    function setupEventListeners() {
+      document.addEventListener('keydown', handleKeyPress);
+      startButton.addEventListener('click', startGame);
+      restartButton.addEventListener('click', startGame);
+    }
+    
+    // Start the game
+    function startGame() {
+      startScreen.style.display = 'none';
+      gameOverScreen.style.display = 'none';
+      
+      resetGame();
+      createBoard();
+      createNextPieceDisplay();
+      createNewPiece();
+      updateGameDisplay();
+      
+      // Start the game loop
+      gameStarted = true;
+      startGameLoop();
+    }
+    
+    // Reset game state
+    function resetGame() {
+      board = [];
+      score = 0;
+      level = 1;
+      lines = 0;
+      currentGridSize = INITIAL_GRID_SIZE;
+      cellSize = INITIAL_CELL_SIZE;
+      isPaused = false;
+      clearInterval(gameInterval);
+    }
+    
+    // Create the game board
+    function createBoard() {
+      gameBoard.innerHTML = '';
+      gameBoard.style.gridTemplateColumns = `repeat(${currentGridSize}, ${cellSize}px)`;
+      gameBoard.style.gridTemplateRows = `repeat(${currentGridSize}, ${cellSize}px)`;
+      
+      board = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(0));
+      
+      for (let row = 0; row < currentGridSize; row++) {
+        for (let col = 0; col < currentGridSize; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.id = `cell-${row}-${col}`;
+          cell.style.width = `${cellSize}px`;
+          cell.style.height = `${cellSize}px`;
+          gameBoard.appendChild(cell);
+        }
+      }
+    }
+    
+    // Create the next piece display
+    function createNextPieceDisplay() {
+      nextPieceElement.innerHTML = '';
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('next-cell');
+          cell.id = `next-${row}-${col}`;
+          nextPieceElement.appendChild(cell);
+        }
+      }
+    }
+    
+    // Create a new piece
+    function createNewPiece() {
+      if (nextPiece === null) {
+        nextPiece = generateRandomPiece();
+      }
+      
+      currentPiece = nextPiece;
+      nextPiece = generateRandomPiece();
+      
+      displayNextPiece();
+      
+      // Check if the new piece can be placed
+      if (!isValidMove(currentPiece.shape, currentPiece.row, currentPiece.col)) {
+        gameOver();
+      }
+    }
+    
+    // Generate a random piece
+    function generateRandomPiece() {
+      const randomIndex = Math.floor(Math.random() * tetrominoes.length);
+      const shape = tetrominoes[randomIndex];
+      const colorIndex = Math.floor(Math.random() * colors.length);
+      
+      return {
+        shape: shape,
+        color: colors[colorIndex],
+        row: 0,
+        col: Math.floor((currentGridSize - shape[0].length) / 2),
+        height: shape.length,
+        width: shape[0].length
+      };
+    }
+    
+    // Display the next piece
+    function displayNextPiece() {
+      // Clear the next piece display
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          const cell = document.getElementById(`next-${row}-${col}`);
+          cell.style.backgroundColor = 'black';
+        }
+      }
+      
+      // Display the next piece
+      const shape = nextPiece.shape;
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col]) {
+            const cell = document.getElementById(`next-${row}-${col}`);
+            cell.style.backgroundColor = nextPiece.color;
+          }
+        }
+      }
+    }
+    
+    // Start the game loop
+    function startGameLoop() {
+      clearInterval(gameInterval);
+      
+      // Set the interval based on the current level
+      const speed = Math.max(50, 1000 - (level - 1) * 50);
+      gameInterval = setInterval(moveDown, speed);
+    }
+    
+    // Move the current piece down
+    function moveDown() {
+      if (isPaused || !gameStarted) return;
+      
+      if (isValidMove(currentPiece.shape, currentPiece.row + 1, currentPiece.col)) {
+        currentPiece.row++;
+        updateGameDisplay();
+      } else {
+        // Piece has landed
+        lockPiece();
+        clearLines();
+        createNewPiece();
+        updateGameDisplay();
+      }
+    }
+    
+    // Lock the current piece in place
+    function lockPiece() {
+      const shape = currentPiece.shape;
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col]) {
+            const boardRow = currentPiece.row + row;
+            const boardCol = currentPiece.col + col;
+            
+            if (boardRow >= 0 && boardRow < currentGridSize && boardCol >= 0 && boardCol < currentGridSize) {
+              board[boardRow][boardCol] = currentPiece.color;
+            }
+          }
+        }
+      }
+    }
+    
+    // Clear completed lines
+    function clearLines() {
+      let linesCleared = 0;
+      
+      for (let row = currentGridSize - 1; row >= 0; row--) {
+        if (board[row].every(cell => cell !== 0)) {
+          // Line is complete
+          linesCleared++;
+          
+          // Clear the line
+          for (let r = row; r > 0; r--) {
+            board[r] = [...board[r-1]];
+          }
+          
+          // Clear the top row
+          board[0] = Array(currentGridSize).fill(0);
+          
+          // Check the same row again (since we've moved everything down)
+          row++;
+        }
+      }
+      
+      if (linesCleared > 0) {
+        // Update score (more points for clearing multiple lines at once)
+        const pointsScored = calculatePoints(linesCleared);
+        score += pointsScored;
+        lines += linesCleared;
+        
+        // Level up every 10 lines
+        if (Math.floor(lines / 10) >= level) {
+          levelUp();
+        }
+        
+        // Update high score if needed
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('blockFallHighScore', highScore);
+        }
+      }
+    }
+    
+    // Calculate points based on lines cleared
+    function calculatePoints(linesCleared) {
+      const basePoints = [0, 100, 300, 500, 800];
+      return basePoints[linesCleared] * level;
+    }
+    
+    // Level up
+    function levelUp() {
+      level++;
+      
+      // Every 3 levels, increase grid size up to a maximum of 16
+      if (level % 3 === 0 && currentGridSize < 16) {
+        currentGridSize += 2;
+        cellSize = Math.min(INITIAL_CELL_SIZE, Math.floor(480 / currentGridSize));
+        
+        // Rebuild the board with the new size
+        const tempBoard = board;
+        createBoard();
+        
+        // Copy existing blocks to the new board
+        for (let row = 0; row < tempBoard.length; row++) {
+          for (let col = 0; col < tempBoard[row].length; col++) {
+            if (row < currentGridSize && col < currentGridSize) {
+              board[row][col] = tempBoard[row][col];
+            }
+          }
+        }
+      }
+      
+      // Update game speed
+      startGameLoop();
+    }
+    
+    // Check if a move is valid
+    function isValidMove(shape, newRow, newCol) {
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col]) {
+            const boardRow = newRow + row;
+            const boardCol = newCol + col;
+            
+            // Check if out of bounds
+            if (boardRow >= currentGridSize || boardCol < 0 || boardCol >= currentGridSize) {
+              return false;
+            }
+            
+            // Check if position is already occupied (but not if still above the board)
+            if (boardRow >= 0 && board[boardRow][boardCol] !== 0) {
+              return false;
+            }
+          }
+        }
+      }
+      
+      return true;
+    }
+    
+    // Update the game display
+    function updateGameDisplay() {
+      // Clear the board display
+      for (let row = 0; row < currentGridSize; row++) {
+        for (let col = 0; col < currentGridSize; col++) {
+          const cell = document.getElementById(`cell-${row}-${col}`);
+          cell.style.backgroundColor = board[row][col] || 'black';
+        }
+      }
+      
+      // Display the current piece
+      const shape = currentPiece.shape;
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col]) {
+            const boardRow = currentPiece.row + row;
+            const boardCol = currentPiece.col + col;
+            
+            if (boardRow >= 0 && boardRow < currentGridSize && boardCol >= 0 && boardCol < currentGridSize) {
+              const cell = document.getElementById(`cell-${boardRow}-${boardCol}`);
+              cell.style.backgroundColor = currentPiece.color;
+            }
+          }
+        }
+      }
+      
+      // Update score and level
+      scoreElement.textContent = score;
+      levelElement.textContent = level;
+      linesElement.textContent = lines;
+      highScoreElement.textContent = highScore;
+    }
+    
+    // Handle key presses
+    function handleKeyPress(e) {
+      if (!gameStarted || isPaused) return;
+      
+      switch (e.keyCode) {
+        case 37: // Left arrow
+          moveHorizontal(-1);
+          break;
+        case 39: // Right arrow
+          moveHorizontal(1);
+          break;
+        case 40: // Down arrow
+          moveDown();
+          break;
+        case 38: // Up arrow
+          rotatePiece();
+          break;
+        case 32: // Space (hard drop)
+          hardDrop();
+          break;
+      }
+    }
+    
+    // Move horizontally
+    function moveHorizontal(direction) {
+      if (isValidMove(currentPiece.shape, currentPiece.row, currentPiece.col + direction)) {
+        currentPiece.col += direction;
+        updateGameDisplay();
+      }
+    }
+    
+    // Rotate the current piece
+    function rotatePiece() {
+      const rotatedShape = rotateMatrix(currentPiece.shape);
+      
+      if (isValidMove(rotatedShape, currentPiece.row, currentPiece.col)) {
+        currentPiece.shape = rotatedShape;
+        updateGameDisplay();
+      } else {
+        // Try wall kick (move left/right if rotation against wall)
+        const kicks = [-1, 1, -2, 2]; // Possible offsets to try
+        
+        for (const kick of kicks) {
+          if (isValidMove(rotatedShape, currentPiece.row, currentPiece.col + kick)) {
+            currentPiece.shape = rotatedShape;
+            currentPiece.col += kick;
+            updateGameDisplay();
+            return;
+          }
+        }
+      }
+    }
+    
+    // Rotate a matrix (for piece rotation)
+    function rotateMatrix(matrix) {
+      const N = matrix.length;
+      const result = Array(N).fill().map(() => Array(N).fill(0));
+      
+      for (let row = 0; row < N; row++) {
+        for (let col = 0; col < N; col++) {
+          result[col][N - 1 - row] = matrix[row][col];
+        }
+      }
+      
+      return result;
+    }
+    
+    // Hard drop the piece
+    function hardDrop() {
+      let newRow = currentPiece.row;
+      
+      while (isValidMove(currentPiece.shape, newRow + 1, currentPiece.col)) {
+        newRow++;
+      }
+      
+      currentPiece.row = newRow;
+      updateGameDisplay();
+      
+      // Force lock and new piece
+      lockPiece();
+      clearLines();
+      createNewPiece();
+      updateGameDisplay();
+    }
+    
+    // Game over
+    function gameOver() {
+      clearInterval(gameInterval);
+      gameStarted = false;
+      
+      finalScoreElement.textContent = score;
+      finalHighScoreElement.textContent = highScore;
+      gameOverScreen.style.display = 'flex';
+    }
+    
+    // Initialize the game
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Four</title>
+  <style>
+    :root {
+      --board-blue: #1a56a8;
+      --board-dark-blue: #0a3875;
+      --yellow-piece: #f7d117;
+      --red-piece: #e71e25;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 1200px;
+      width: 100%;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    
+    .title {
+      font-size: 2.5rem;
+      color: var(--board-blue);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .game-options {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    
+    .player-info {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    
+    .player-card {
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 48%;
+      display: flex;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    
+    .player-card.active {
+      transform: scale(1.05);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .player-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .player1-icon {
+      background-color: var(--red-piece);
+      color: white;
+    }
+    
+    .player2-icon {
+      background-color: var(--yellow-piece);
+      color: black;
+    }
+    
+    .player-details {
+      flex-grow: 1;
+    }
+    
+    .player-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .player-timer {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    
+    .board-container {
+      position: relative;
+      margin-bottom: 30px;
+    }
+    
+    .drop-area {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    
+    .drop-button {
+      width: 60px;
+      height: 40px;
+      background-color: var(--board-dark-blue);
+      border: none;
+      border-radius: 10px 10px 0 0;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .drop-button::after {
+      content: "↓";
+      color: white;
+      font-size: 20px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    .drop-button:hover {
+      background-color: #1263c9;
+      transform: translateY(-5px);
+    }
+    
+    .drop-button:disabled {
+      background-color: #929292;
+      cursor: not-allowed;
+    }
+    
+    .board {
+      background-color: var(--board-blue);
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .board::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background-color: var(--board-dark-blue);
+      border-radius: 0 0 10px 10px;
+    }
+    
+    .board-row {
+      display: flex;
+    }
+    
+    .board-cell {
+      width: 60px;
+      height: 60px;
+      padding: 5px;
+    }
+    
+    .cell-inner {
+      width: 100%;
+      height: 100%;
+      background-color: #fcf9f9;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .piece {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateY(-100px);
+    }
+    
+    .piece.red {
+      background-color: var(--red-piece);
+    }
+    
+    .piece.yellow {
+      background-color: var(--yellow-piece);
+    }
+    
+    .piece.winning {
+      animation: pulse 1s infinite alternate;
+    }
+    
+    .game-info {
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .reset-button {
+      background-color: var(--board-blue);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 20px;
+    }
+    
+    .reset-button:hover {
+      background-color: var(--board-dark-blue);
+    }
+    
+    .highscore-container {
+      margin-top: 30px;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 800px;
+    }
+    
+    .highscore-title {
+      font-size: 1.5rem;
+      color: var(--board-blue);
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    
+    .highscore-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .highscore-table th,
+    .highscore-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .highscore-table th {
+      background-color: var(--board-blue);
+      color: white;
+    }
+    
+    .highscore-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    
+    @keyframes drop {
+      0% { transform: translateY(-100px); }
+      70% { transform: translateY(10px); }
+      85% { transform: translateY(-5px); }
+      100% { transform: translateY(0); }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.1); box-shadow: 0 0 10px 5px rgba(255, 255, 255, 0.7); }
+    }
+    
+    @keyframes flip {
+      0% { transform: rotateY(0); }
+      100% { transform: rotateY(180deg); }
+    }
+    
+    .player-turn-flip {
+      animation: flip 0.5s ease-in-out;
+    }
+    
+    .confetti-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 0;
+      opacity: 0;
+    }
+    
+    .start-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    
+    .start-container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+    }
+    
+    .start-title {
+      font-size: 2rem;
+      color: var(--board-blue);
+      margin-bottom: 20px;
+    }
+    
+    .game-mode-container {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+    
+    .game-mode-btn {
+      padding: 10px 20px;
+      border: 2px solid var(--board-blue);
+      background-color: white;
+      color: var(--board-blue);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .game-mode-btn.selected {
+      background-color: var(--board-blue);
+      color: white;
+    }
+    
+    .player-name-input {
+      margin-bottom: 15px;
+    }
+    
+    .player-name-input label {
+      display: block;
+      margin-bottom: 5px;
+      text-align: left;
+    }
+    
+    .player-name-input input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    .ai-difficulty {
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .ai-difficulty.visible {
+      display: block;
+    }
+    
+    .difficulty-options {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+    
+    .difficulty-btn {
+      padding: 8px 15px;
+      border: 1px solid var(--board-blue);
+      background-color: white;
+      color: var(--board-blue);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .difficulty-btn.selected {
+      background-color: var(--board-blue);
+      color: white;
+    }
+    
+    .start-game-btn {
+      background-color: var(--board-blue);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 5px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .start-game-btn:hover {
+      background-color: var(--board-dark-blue);
+    }
+    
+    /* Responsive design */
+    @media (max-width: 800px) {
+      .board-cell {
+        width: 45px;
+        height: 45px;
+      }
+      
+      .drop-button {
+        width: 45px;
+      }
+      
+      .player-info {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .player-card {
+        width: 100%;
+      }
+    }
+    
+    @media (max-width: 500px) {
+      .board-cell {
+        width: 35px;
+        height: 35px;
+      }
+      
+      .drop-button {
+        width: 35px;
+        height: 30px;
+      }
+      
+      .title {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="header">
+      <h1 class="title">
+        <span style="color: var(--red-piece);">Connect</span>
+        <span style="color: var(--yellow-piece);">Four</span>
+        🎮
+      </h1>
+    </div>
+    
+    <div class="player-info">
+      <div class="player-card" id="player1Card">
+        <div class="player-icon player1-icon">
+          1
+        </div>
+        <div class="player-details">
+          <div class="player-name" id="player1Name">Player 1</div>
+          <div class="player-timer" id="player1Timer">30s</div>
+        </div>
+      </div>
+      
+      <div class="player-card" id="player2Card">
+        <div class="player-icon player2-icon">
+          2
+        </div>
+        <div class="player-details">
+          <div class="player-name" id="player2Name">Player 2</div>
+          <div class="player-timer" id="player2Timer">30s</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="board-container">
+      <div class="drop-area" id="dropArea">
+        <!-- Drop buttons will be generated here -->
+      </div>
+      
+      <div class="board" id="board">
+        <!-- Game board will be generated here -->
+      </div>
+    </div>
+    
+    <div class="game-info" id="gameInfo">
+      <h2>Game in progress...</h2>
+    </div>
+    
+    <button class="reset-button" id="resetButton">Reset Game</button>
+    
+    <div class="highscore-container">
+      <h2 class="highscore-title">High Scores 🏆</h2>
+      <table class="highscore-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Mode</th>
+            <th>Moves</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="highscoreTableBody">
+          <!-- High scores will be added here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <div class="confetti-container" id="confettiContainer"></div>
+  
+  <div class="start-screen" id="startScreen">
+    <div class="start-container">
+      <h2 class="start-title">Welcome to Connect Four!</h2>
+      
+      <div class="game-mode-container">
+        <button class="game-mode-btn selected" data-mode="multiplayer">2 Players</button>
+        <button class="game-mode-btn" data-mode="ai">vs AI</button>
+      </div>
+      
+      <div class="player-name-input">
+        <label for="player1Input">Player 1 Name (Red):</label>
+        <input type="text" id="player1Input" maxlength="15" placeholder="Player 1">
+      </div>
+      
+      <div class="player-name-input">
+        <label for="player2Input">Player 2 Name (Yellow):</label>
+        <input type="text" id="player2Input" maxlength="15" placeholder="Player 2">
+      </div>
+      
+      <div class="ai-difficulty" id="aiDifficulty">
+        <h3>AI Difficulty:</h3>
+        <div class="difficulty-options">
+          <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+          <button class="difficulty-btn selected" data-difficulty="medium">Medium</button>
+          <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+        </div>
+      </div>
+      
+      <button class="start-game-btn" id="startGameBtn">Start Game</button>
+    </div>
+  </div>
+  
+  <script>
+    // Game configuration
+    const ROWS = 6;
+    const COLS = 7;
+    const TIMER_DURATION = 30; // seconds
+    const EMPTY = 0;
+    const PLAYER1 = 1; // Red
+    const PLAYER2 = 2; // Yellow
+    
+    // Game state
+    let gameBoard = [];
+    let currentPlayer;
+    let gameMode = 'multiplayer';
+    let aiDifficulty = 'medium';
+    let gameActive = false;
+    let movesCount = 0;
+    let gameStartTime;
+    let player1Name = 'Player 1';
+    let player2Name = 'Player 2';
+    let player1Timer;
+    let player2Timer;
+    let currentTimer;
+    let player1TimeLeft = TIMER_DURATION;
+    let player2TimeLeft = TIMER_DURATION;
+    let highScores = [];
+    
+    // DOM Elements
+    const boardElement = document.getElementById('board');
+    const dropAreaElement = document.getElementById('dropArea');
+    const player1Card = document.getElementById('player1Card');
+    const player2Card = document.getElementById('player2Card');
+    const player1NameElement = document.getElementById('player1Name');
+    const player2NameElement = document.getElementById('player2Name');
+    const player1TimerElement = document.getElementById('player1Timer');
+    const player2TimerElement = document.getElementById('player2Timer');
+    const gameInfoElement = document.getElementById('gameInfo');
+    const resetButton = document.getElementById('resetButton');
+    const highscoreTableBody = document.getElementById('highscoreTableBody');
+    const confettiContainer = document.getElementById('confettiContainer');
+    const startScreen = document.getElementById('startScreen');
+    const startGameBtn = document.getElementById('startGameBtn');
+    const gameModeButtons = document.querySelectorAll('.game-mode-btn');
+    const player1Input = document.getElementById('player1Input');
+    const player2Input = document.getElementById('player2Input');
+    const aiDifficultyElement = document.getElementById('aiDifficulty');
+    const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+    
+    // Initialize the game
+    function init() {
+      createBoard();
+      createDropButtons();
+      setupEventListeners();
+      loadHighScores();
+      renderHighScores();
+    }
+    
+    // Create the game board
+    function createBoard() {
+      boardElement.innerHTML = '';
+      gameBoard = Array(ROWS).fill().map(() => Array(COLS).fill(EMPTY));
+      
+      for (let row = 0; row < ROWS; row++) {
+        const rowElement = document.createElement('div');
+        rowElement.className = 'board-row';
+        
+        for (let col = 0; col < COLS; col++) {
+          const cellElement = document.createElement('div');
+          cellElement.className = 'board-cell';
+          cellElement.dataset.row = row;
+          cellElement.dataset.col = col;
+          
+          const cellInner = document.createElement('div');
+          cellInner.className = 'cell-inner';
+          cellInner.id = `cell-${row}-${col}`;
+          
+          cellElement.appendChild(cellInner);
+          rowElement.appendChild(cellElement);
+        }
+        
+        boardElement.appendChild(rowElement);
+      }
+    }
+    
+    // Create drop buttons
+    function createDropButtons() {
+      dropAreaElement.innerHTML = '';
+      
+      for (let col = 0; col < COLS; col++) {
+        const button = document.createElement('button');
+        button.className = 'drop-button';
+        button.dataset.col = col;
+        dropAreaElement.appendChild(button);
+      }
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+      // Drop button click
+      dropAreaElement.addEventListener('click', handleDropClick);
+      
+      // Reset button click
+      resetButton.addEventListener('click', resetGame);
+      
+      // Game mode selection
+      gameModeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          gameModeButtons.forEach(btn => btn.classList.remove('selected'));
+          button.classList.add('selected');
+          gameMode = button.dataset.mode;
+          
+          if (gameMode === 'ai') {
+            player2Input.value = 'AI Opponent';
+            player2Input.disabled = true;
+            aiDifficultyElement.classList.add('visible');
+          } else {
+            player2Input.value = '';
+            player2Input.disabled = false;
+            aiDifficultyElement.classList.remove('visible');
+          }
+        });
+      });
+      
+      // AI difficulty selection
+      difficultyButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+          button.classList.add('selected');
+          aiDifficulty = button.dataset.difficulty;
+        });
+      });
+      
+      // Start game button
+      startGameBtn.addEventListener('click', () => {
+        player1Name = player1Input.value.trim() || 'Player 1';
+        player2Name = player2Input.value.trim() || (gameMode === 'ai' ? 'AI Opponent' : 'Player 2');
+        
+        player1NameElement.textContent = player1Name;
+        player2NameElement.textContent = player2Name;
+        
+        startScreen.style.display = 'none';
+        startGame();
+      });
+    }
+    
+    // Start the game
+    function startGame() {
+      gameActive = true;
+      currentPlayer = PLAYER1;
+      movesCount = 0;
+      gameStartTime = Date.now();
+      
+      updatePlayerDisplay();
+      gameInfoElement.innerHTML = `<h2>${currentPlayer === PLAYER1 ? player1Name : player2Name}'s turn (${currentPlayer === PLAYER1 ? 'Red' : 'Yellow'})</h2>`;
+      
+      // Reset timers
+      player1TimeLeft = TIMER_DURATION;
+      player2TimeLeft = TIMER_DURATION;
+      updateTimerDisplay();
+      
+      // Start timer for first player
+      startPlayerTimer();
+    }
+    
+    // Update the player display
+    function updatePlayerDisplay() {
+      if (currentPlayer === PLAYER1) {
+        player1Card.classList.add('active');
+        player2Card.classList.remove('active');
+      } else {
+        player1Card.classList.remove('active');
+        player2Card.classList.add('active');
+      }
+      
+      // Add flip animation
+      const activeCard = currentPlayer === PLAYER1 ? player1Card : player2Card;
+      activeCard.classList.add('player-turn-flip');
+      setTimeout(() => {
+        activeCard.classList.remove('player-turn-flip');
+      }, 500);
+    }
+    
+    // Start the current player's timer
+    function startPlayerTimer() {
+      // Clear any existing timer
+      if (currentTimer) {
+        clearInterval(currentTimer);
+      }
+      
+      const timerElement = currentPlayer === PLAYER1 ? player1TimerElement : player2TimerElement;
+      const timeLeft = currentPlayer === PLAYER1 ? player1TimeLeft : player2TimeLeft;
+      
+      timerElement.textContent = `${timeLeft}s`;
+      
+      // Don't start timer for AI's turn
+      if (gameMode === 'ai' && currentPlayer === PLAYER2) {
+        return;
+      }
+      
+      currentTimer = setInterval(() => {
+        let timeLeft = currentPlayer === PLAYER1 ? player1TimeLeft : player2TimeLeft;
+        timeLeft--;
+        
+        if (currentPlayer === PLAYER1) {
+          player1TimeLeft = timeLeft;
+        } else {
+          player2TimeLeft = timeLeft;
+        }
+        
+        timerElement.textContent = `${timeLeft}s`;
+        
+        if (timeLeft <= 0) {
+          clearInterval(currentTimer);
+          handleTimeOut();
+        }
+      }, 1000);
+    }
+    
+    // Update timer display without starting the timer
+    function updateTimerDisplay() {
+      player1TimerElement.textContent = `${player1TimeLeft}s`;
+      player2TimerElement.textContent = `${player2TimeLeft}s`;
+    }
+    
+    // Handle timer timeout
+    function handleTimeOut() {
+      const winner = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+      endGame(winner);
+    }
+    
+    // Handle drop button click
+    function handleDropClick(event) {
+      if (!gameActive) return;
+      
+      const button = event.target.closest('.drop-button');
+      if (!button) return;
+      
+      const col = parseInt(button.dataset.col);
+      
+      // Don't allow player to make a move during AI's turn
+      if (gameMode === 'ai' && currentPlayer === PLAYER2) return;
+      
+      makeMove(col);
+    }
+    
+    // Make a move in the specified column
+    function makeMove(col) {
+      if (!isValidMove(col)) return;
+      
+      // Find the lowest empty row in the column
+      const row = findLowestEmptyRow(col);
+      
+      // Update the game board
+      gameBoard[row][col] = currentPlayer;
+      
+      // Animate the piece dropping
+      animatePieceDrop(row, col, currentPlayer);
+      
+      // Increment moves count
+      movesCount++;
+      
+      // Check for a win or draw
+      setTimeout(() => {
+        if (checkForWin(row, col)) {
+          handleWin();
+        } else if (isBoardFull()) {
+          handleDraw();
+        } else {
+          // Switch players
+          switchPlayer();
+          
+          // If AI's turn, make the AI move
+          if (gameMode === 'ai' && currentPlayer === PLAYER2) {
+            setTimeout(makeAIMove, 500);
+          }
+        }
+      }, 500); // Wait for animation to complete
+    }
+    
+    // Check if a move is valid
+    function isValidMove(col) {
+      return col >= 0 && col < COLS && gameBoard[0][col] === EMPTY;
+    }
+    
+    // Find the lowest empty row in a column
+    function findLowestEmptyRow(col) {
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (gameBoard[row][col] === EMPTY) {
+          return row;
+        }
+      }
+      return -1;
+    }
+    
+    // Animate a piece dropping into place
+    function animatePieceDrop(row, col, player) {
+      const cellInner = document.getElementById(`cell-${row}-${col}`);
+      
+      // Create piece element
+      const piece = document.createElement('div');
+      piece.className = `piece ${player === PLAYER1 ? 'red' : 'yellow'}`;
+      cellInner.appendChild(piece);
+      
+      // Trigger animation
+      setTimeout(() => {
+        piece.style.animation = `drop 0.5s forwards`;
+      }, 10);
+    }
+    
+    // Switch to the next player
+    function switchPlayer() {
+      // Clear current timer
+      if (currentTimer) {
+        clearInterval(currentTimer);
+      }
+      
+      currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+      updatePlayerDisplay();
+      gameInfoElement.innerHTML = `<h2>${currentPlayer === PLAYER1 ? player1Name : player2Name}'s turn (${currentPlayer === PLAYER1 ? 'Red' : 'Yellow'})</h2>`;
+      
+      // Start timer for next player
+      startPlayerTimer();
+    }
+    
+    // Make the AI move
+    function makeAIMove() {
+      let col;
+      
+      // Choose column based on AI difficulty
+      switch (aiDifficulty) {
+        case 'easy':
+          col = makeRandomMove();
+          break;
+        case 'medium':
+          // 50% chance of making a smart move, 50% chance of random
+          col = Math.random() < 0.5 ? findBestMove(2) : makeRandomMove();
+          break;
+        case 'hard':
+          col = findBestMove(4);
+          break;
+        default:
+          col = makeRandomMove();
+      }
+      
+      makeMove(col);
+    }
+    
+    // Make a random valid move
+    function makeRandomMove() {
+      // Get all valid moves
+      const validMoves = [];
+      for (let col = 0; col < COLS; col++) {
+        if (isValidMove(col)) {
+          validMoves.push(col);
+        }
+      }
+      
+      // Return a random valid move
+      return validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
+    
+    // Find the best move using minimax algorithm (with limited depth)
+    function findBestMove(depth) {
+      // First look for a winning move
+      for (let col = 0; col < COLS; col++) {
+        if (!isValidMove(col)) continue;
+        
+        const row = findLowestEmptyRow(col);
+        gameBoard[row][col] = PLAYER2;
+        
+        if (checkForWin(row, col)) {
+          gameBoard[row][col] = EMPTY;
+          return col;
+        }
+        
+        gameBoard[row][col] = EMPTY;
+      }
+      
+      // Then look for a move to block player 1 from winning
+      for (let col = 0; col < COLS; col++) {
+        if (!isValidMove(col)) continue;
+        
+        const row = findLowestEmptyRow(col);
+        gameBoard[row][col] = PLAYER1;
+        
+        if (checkForWin(row, col)) {
+          gameBoard[row][col] = EMPTY;
+          return col;
+        }
+        
+        gameBoard[row][col] = EMPTY;
+      }
+      
+      // Otherwise, find the best move with minimax (limited depth)
+      let bestScore = -Infinity;
+      let bestMove = 0;
+      
+      for (let col = 0; col < COLS; col++) {
+        if (!isValidMove(col)) continue;
+        
+        const row = findLowestEmptyRow(col);
+        gameBoard[row][col] = PLAYER2;
+        
+        const score = minimax(gameBoard, depth - 1, false);
+        gameBoard[row][col] = EMPTY;
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = col;
+        }
+      }
+      
+      return bestMove;
+    }
+    
+    // Minimax algorithm with alpha-beta pruning
+    function minimax(board, depth, isMaximizing, alpha = -Infinity, beta = Infinity) {
+      // Base cases
+      if (depth === 0 || isBoardFull()) {
+        return evaluateBoard(board);
+      }
+      
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let col = 0; col < COLS; col++) {
+          if (!isValidMove(col)) continue;
+          
+          const row = findLowestEmptyRow(col);
+          board[row][col] = PLAYER2;
+          
+          const eval = minimax(board, depth - 1, false, alpha, beta);
+          board[row][col] = EMPTY;
+          
+          maxEval = Math.max(maxEval, eval);
+          alpha = Math.max(alpha, eval);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for (let col = 0; col < COLS; col++) {
+          if (!isValidMove(col)) continue;
+          
+          const row = findLowestEmptyRow(col);
+          board[row][col] = PLAYER1;
+          
+          const eval = minimax(board, depth - 1, true, alpha, beta);
+          board[row][col] = EMPTY;
+          
+          minEval = Math.min(minEval, eval);
+          beta = Math.min(beta, eval);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+    
+    // Evaluate the board for the AI
+    function evaluateBoard(board) {
+      let score = 0;
+      
+      // Evaluate all possible 4-in-a-row sequences
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS - 3; col++) {
+          score += evaluateSequence(
+            board[row][col],
+            board[row][col + 1],
+            board[row][col + 2],
+            board[row][col + 3]
+          );
+        }
+      }
+      
+      // Evaluate columns
+      for (let col = 0; col < COLS; col++) {
+        for (let row = 0; row < ROWS - 3; row++) {
+          score += evaluateSequence(
+            board[row][col],
+            board[row + 1][col],
+            board[row + 2][col],
+            board[row + 3][col]
+          );
+        }
+      }
+      
+      // Evaluate diagonals (positive slope)
+      for (let row = 0; row < ROWS - 3; row++) {
+        for (let col = 0; col < COLS - 3; col++) {
+          score += evaluateSequence(
+            board[row][col],
+            board[row + 1][col + 1],
+            board[row + 2][col + 2],
+            board[row + 3][col + 3]
+          );
+        }
+      }
+      
+      // Evaluate diagonals (negative slope)
+      for (let row = 3; row < ROWS; row++) {
+        for (let col = 0; col < COLS - 3; col++) {
+          score += evaluateSequence(
+            board[row][col],
+            board[row - 1][col + 1],
+            board[row - 2][col + 2],
+            board[row - 3][col + 3]
+          );
+        }
+      }
+      
+      return score;
+    }
+    
+    // Evaluate a sequence of 4 cells
+    function evaluateSequence(cell1, cell2, cell3, cell4) {
+      let score = 0;
+      
+      // Count AI pieces and player pieces in the sequence
+      let aiCount = 0;
+      let playerCount = 0;
+      let emptyCount = 0;
+      
+      const sequence = [cell1, cell2, cell3, cell4];
+      sequence.forEach(cell => {
+        if (cell === PLAYER2) aiCount++;
+        else if (cell === PLAYER1) playerCount++;
+        else emptyCount++;
+      });
+      
+      // AI has 4 in a row
+      if (aiCount === 4) score += 100;
+      // AI has 3 in a row with 1 empty
+      else if (aiCount === 3 && emptyCount === 1) score += 5;
+      // AI has 2 in a row with 2 empty
+      else if (aiCount === 2 && emptyCount === 2) score += 2;
+      
+      // Player has 3 in a row with 1 empty (block this)
+      if (playerCount === 3 && emptyCount === 1) score -= 4;
+      
+      return score;
+    }
+    
+    // Check if the board is full
+    function isBoardFull() {
+      return gameBoard[0].every(cell => cell !== EMPTY);
+    }
+    
+    // Check for a win
+    function checkForWin(row, col) {
+      const player = gameBoard[row][col];
+      
+      // Check horizontal
+      let count = 1;
+      for (let i = col - 1; i >= 0 && gameBoard[row][i] === player; i--) count++;
+      for (let i = col + 1; i < COLS && gameBoard[row][i] === player; i++) count++;
+      if (count >= 4) return true;
+      
+      // Check vertical
+      count = 1;
+      for (let i = row - 1; i >= 0 && gameBoard[i][col] === player; i--) count++;
+      for (let i = row + 1; i < ROWS && gameBoard[i][col] === player; i++) count++;
+      if (count >= 4) return true;
+      
+      // Check diagonal (positive slope)
+      count = 1;
+      for (let i = row - 1, j = col - 1; i >= 0 && j >= 0 && gameBoard[i][j] === player; i--, j--) count++;
+      for (let i = row + 1, j = col + 1; i < ROWS && j < COLS && gameBoard[i][j] === player; i++, j++) count++;
+      if (count >= 4) return true;
+      
+      // Check diagonal (negative slope)
+      count = 1;
+      for (let i = row - 1, j = col + 1; i >= 0 && j < COLS && gameBoard[i][j] === player; i--, j++) count++;
+      for (let i = row + 1, j = col - 1; i < ROWS && j >= 0 && gameBoard[i][j] === player; i++, j--) count++;
+      if (count >= 4) return true;
+      
+      return false;
+    }
+    
+    // Handle a win
+    function handleWin() {
+      gameActive = false;
+      const winner = currentPlayer === PLAYER1 ? player1Name : player2Name;
+      gameInfoElement.innerHTML = `<h2>${winner} wins! 🎉</h2>`;
+      
+      // Highlight winning pieces
+      highlightWinningPieces();
+      
+      // Stop timers
+      if (currentTimer) {
+        clearInterval(currentTimer);
+      }
+      
+      // Add confetti
+      createConfetti();
+      
+      // Save high score
+      saveHighScore(winner);
+    }
+    
+    // Handle a draw
+    function handleDraw() {
+      gameActive = false;
+      gameInfoElement.innerHTML = `<h2>It's a draw! 🤝</h2>`;
+      
+      // Stop timers
+      if (currentTimer) {
+        clearInterval(currentTimer);
+      }
+    }
+    
+    // Highlight the winning pieces
+    function highlightWinningPieces() {
+      // This function would need to be implemented to find and highlight the winning sequence
+      // For now, we'll just add a class to all pieces of the winning player
+      const pieces = document.querySelectorAll(`.piece.${currentPlayer === PLAYER1 ? 'red' : 'yellow'}`);
+      pieces.forEach(piece => {
+        piece.classList.add('winning');
+      });
+    }
+    
+    // Create confetti animation
+    function createConfetti() {
+      const colors = ['#f7d117', '#e71e25', '#1a56a8', '#0a3875'];
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = `${Math.random() * 100}vw`;
+        confetti.style.animationDuration = `${Math.random() * 2 + 1}s`;
+        confetti.style.animationDelay = `${Math.random() * 2}s`;
+        confettiContainer.appendChild(confetti);
+      }
+      
+      setTimeout(() => {
+        confettiContainer.innerHTML = '';
+      }, 5000);
+    }
+    
+    // Save high score
+    function saveHighScore(winner) {
+      const gameTime = Math.floor((Date.now() - gameStartTime) / 1000);
+      const highScore = {
+        player: winner,
+        mode: gameMode === 'ai' ? `vs AI (${aiDifficulty})` : '2 Players',
+        moves: movesCount,
+        time: gameTime
+      };
+      
+      highScores.push(highScore);
+      highScores.sort((a, b) => a.moves - b.moves || a.time - b.time);
+      if (highScores.length > 10) highScores.pop();
+      
+      localStorage.setItem('connectFourHighScores', JSON.stringify(highScores));
+      renderHighScores();
+    }
+    
+    // Load high scores from localStorage
+    function loadHighScores() {
+      const savedScores = localStorage.getItem('connectFourHighScores');
+      if (savedScores) {
+        highScores = JSON.parse(savedScores);
+      }
+    }
+    
+    // Render high scores
+    function renderHighScores() {
+      highscoreTableBody.innerHTML = '';
+      highScores.forEach((score, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${score.player}</td>
+          <td>${score.mode}</td>
+          <td>${score.moves}</td>
+          <td>${score.time}s</td>
+        `;
+        highscoreTableBody.appendChild(row);
+      });
+    }
+    
+    // Reset the game
+    function resetGame() {
+      gameActive = false;
+      createBoard();
+      gameInfoElement.innerHTML = `<h2>Game in progress...</h2>`;
+      
+      // Reset timers
+      if (currentTimer) {
+        clearInterval(currentTimer);
+      }
+      player1TimeLeft = TIMER_DURATION;
+      player2TimeLeft = TIMER_DURATION;
+      updateTimerDisplay();
+      
+      // Show start screen
+      startScreen.style.display = 'flex';
+    }
+    
+    // Initialize the game when the page loads
+    init();
+  </script>
+</body>
+</html>

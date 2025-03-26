@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Escape Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #111;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    
+    .game-container {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      background-color: #000;
+      border: 2px solid #333;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 0, 255, 0.5);
+      perspective: 1000px;
+    }
+    
+    .game-board {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.3s;
+    }
+    
+    .player, .ghost, .wall, .exit {
+      position: absolute;
+      font-size: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 30px;
+      height: 30px;
+      transition: all 0.2s;
+      transform-style: preserve-3d;
+    }
+    
+    .player {
+      z-index: 10;
+      text-shadow: 0 0 10px #0ff;
+      animation: pulse 1.5s infinite alternate;
+    }
+    
+    .ghost {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 0 10px #f0f;
+      animation: float 2s infinite alternate;
+    }
+    
+    .wall {
+      background-color: #333;
+      border-radius: 4px;
+      box-shadow: 0 0 5px #555;
+      transform: translateZ(5px);
+    }
+    
+    .exit {
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0;
+      animation: glow 1.5s infinite alternate;
+    }
+    
+    .game-stats {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #fff;
+      font-family: monospace;
+      font-size: 14px;
+      text-shadow: 0 0 5px #0ff;
+    }
+    
+    .game-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+      z-index: 100;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    
+    .game-message button {
+      background-color: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .game-message button:hover {
+      background-color: #555;
+      transform: scale(1.05);
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1) translateZ(10px); }
+      100% { transform: scale(1.1) translateZ(10px); }
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(0) translateZ(8px); }
+      100% { transform: translateY(-5px) translateZ(8px); }
+    }
+    
+    @keyframes glow {
+      0% { opacity: 0.7; transform: translateZ(5px); }
+      100% { opacity: 1; transform: translateZ(5px); }
+    }
+    
+    .shadow {
+      position: absolute;
+      bottom: -5px;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%);
+      height: 10px;
+      width: 30px;
+      border-radius: 50%;
+      z-index: -1;
+    }
+    
+    .level-indicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #fff;
+      font-family: monospace;
+      text-shadow: 0 0 5px #0ff;
+    }
+    
+    .control-hints {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: #888;
+      font-size: 12px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="game-board" id="gameBoard"></div>
+    <div class="game-stats" id="gameStats">Lives: 3 | Time: 0s</div>
+    <div class="level-indicator" id="levelIndicator">Level: 1</div>
+    <div class="control-hints">Use Arrow Keys or WASD to move</div>
+    <div class="game-message" id="gameMessage">
+      <h2 id="messageTitle">Game Over</h2>
+      <p id="messageText">You lost all your lives!</p>
+      <button id="restartButton">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const gameBoard = document.getElementById('gameBoard');
+    const gameStats = document.getElementById('gameStats');
+    const gameMessage = document.getElementById('gameMessage');
+    const messageTitle = document.getElementById('messageTitle');
+    const messageText = document.getElementById('messageText');
+    const restartButton = document.getElementById('restartButton');
+    const levelIndicator = document.getElementById('levelIndicator');
+    
+    let player;
+    let ghosts = [];
+    let walls = [];
+    let exit;
+    let playerX = 1;
+    let playerY = 1;
+    let lives = 3;
+    let gameTime = 0;
+    let gameInterval;
+    let gameActive = true;
+    let currentLevel = 1;
+    let maxLevel = 3;
+    
+    // Level designs
+    const levels = [
+      // Level 1
+      {
+        walls: [
+          [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [13, 0], [14, 0], [15, 0], [16, 0], [17, 0], [18, 0], [19, 0],
+          [0, 1], [19, 1],
+          [0, 2], [2, 2], [3, 2], [5, 2], [7, 2], [9, 2], [11, 2], [13, 2], [15, 2], [17, 2], [19, 2],
+          [0, 3], [19, 3],
+          [0, 4], [2, 4], [4, 4], [6, 4], [8, 4], [10, 4], [12, 4], [14, 4], [16, 4], [18, 4], [19, 4],
+          [0, 5], [19, 5],
+          [0, 6], [3, 6], [5, 6], [7, 6], [9, 6], [11, 6], [13, 6], [15, 6], [17, 6], [19, 6],
+          [0, 7], [19, 7],
+          [0, 8], [2, 8], [4, 8], [6, 8], [8, 8], [10, 8], [12, 8], [14, 8], [16, 8], [18, 8], [19, 8],
+          [0, 9], [19, 9],
+          [0, 10], [3, 10], [5, 10], [7, 10], [9, 10], [11, 10], [13, 10], [15, 10], [17, 10], [19, 10],
+          [0, 11], [19, 11],
+          [0, 12], [0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13]
+        ],
+        playerStart: [1, 1],
+        exit: [18, 11],
+        ghosts: [[10, 6, 0.5], [5, 8, 0.4], [15, 3, 0.3]]
+      },
+      // Level 2
+      {
+        walls: [
+          [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [13, 0], [14, 0], [15, 0], [16, 0], [17, 0], [18, 0], [19, 0],
+          [0, 1], [19, 1],
+          [0, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [8, 2], [10, 2], [12, 2], [14, 2], [16, 2], [17, 2], [18, 2], [19, 2],
+          [0, 3], [19, 3],
+          [0, 4], [2, 4], [4, 4], [6, 4], [8, 4], [10, 4], [12, 4], [14, 4], [16, 4], [19, 4],
+          [0, 5], [19, 5],
+          [0, 6], [2, 6], [3, 6], [4, 6], [6, 6], [8, 6], [9, 6], [10, 6], [12, 6], [14, 6], [16, 6], [17, 6], [18, 6], [19, 6],
+          [0, 7], [19, 7],
+          [0, 8], [2, 8], [4, 8], [6, 8], [8, 8], [10, 8], [12, 8], [14, 8], [16, 8], [19, 8],
+          [0, 9], [19, 9],
+          [0, 10], [2, 10], [4, 10], [5, 10], [6, 10], [8, 10], [10, 10], [12, 10], [14, 10], [15, 10], [16, 10], [19, 10],
+          [0, 11], [19, 11],
+          [0, 12], [2, 12], [19, 12],
+          [0, 13], [0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13]
+        ],
+        playerStart: [1, 1],
+        exit: [18, 12],
+        ghosts: [[9, 4, 0.6], [4, 9, 0.5], [14, 7, 0.7], [7, 1, 0.4]]
+      },
+      // Level 3
+      {
+        walls: [
+          [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [13, 0], [14, 0], [15, 0], [16, 0], [17, 0], [18, 0], [19, 0],
+          [0, 1], [9, 1], [19, 1],
+          [0, 2], [2, 2], [3, 2], [4, 2], [5, 2], [7, 2], [9, 2], [11, 2], [13, 2], [15, 2], [17, 2], [19, 2],
+          [0, 3], [2, 3], [7, 3], [13, 3], [17, 3], [19, 3],
+          [0, 4], [2, 4], [3, 4], [5, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [13, 4], [15, 4], [17, 4], [19, 4],
+          [0, 5], [5, 5], [11, 5], [15, 5], [19, 5],
+          [0, 6], [1, 6], [3, 6], [5, 6], [6, 6], [7, 6], [9, 6], [11, 6], [12, 6], [13, 6], [15, 6], [17, 6], [19, 6],
+          [0, 7], [3, 7], [9, 7], [17, 7], [19, 7],
+          [0, 8], [1, 8], [3, 8], [4, 8], [5, 8], [7, 8], [9, 8], [10, 8], [11, 8], [13, 8], [15, 8], [17, 8], [19, 8],
+          [0, 9], [5, 9], [7, 9], [13, 9], [15, 9], [19, 9],
+          [0, 10], [1, 10], [2, 10], [3, 10], [5, 10], [7, 10], [8, 10], [9, 10], [11, 10], [13, 10], [15, 10], [16, 10], [17, 10], [19, 10],
+          [0, 11], [9, 11], [11, 11], [19, 11],
+          [0, 12], [1, 12], [2, 12], [3, 12], [4, 12], [5, 12], [6, 12], [7, 12], [9, 12], [11, 12], [12, 12], [13, 12], [14, 12], [15, 12], [16, 12], [17, 12], [18, 12], [19, 12]
+        ],
+        playerStart: [1, 2],
+        exit: [8, 11],
+        ghosts: [[5, 7, 0.7], [14, 4, 0.8], [7, 10, 0.6], [10, 3, 0.7], [16, 9, 0.5]]
+      }
+    ];
+    
+    // Initialize the game
+    function initGame() {
+      // Clear existing elements
+      gameBoard.innerHTML = '';
+      ghosts = [];
+      walls = [];
+      
+      // Set up the level
+      const level = levels[currentLevel - 1];
+      
+      // Create player
+      playerX = level.playerStart[0];
+      playerY = level.playerStart[1];
+      player = document.createElement('div');
+      player.className = 'player';
+      player.textContent = '👤';
+      player.style.left = `${playerX * 30}px`;
+      player.style.top = `${playerY * 30}px`;
+      gameBoard.appendChild(player);
+      
+      // Add shadow to player
+      const playerShadow = document.createElement('div');
+      playerShadow.className = 'shadow';
+      player.appendChild(playerShadow);
+      
+      // Create exit
+      exit = document.createElement('div');
+      exit.className = 'exit';
+      exit.textContent = '🚪';
+      exit.style.left = `${level.exit[0] * 30}px`;
+      exit.style.top = `${level.exit[1] * 30}px`;
+      gameBoard.appendChild(exit);
+      
+      // Create walls
+      for (const wall of level.walls) {
+        const wallElement = document.createElement('div');
+        wallElement.className = 'wall';
+        wallElement.style.left = `${wall[0] * 30}px`;
+        wallElement.style.top = `${wall[1] * 30}px`;
+        gameBoard.appendChild(wallElement);
+        walls.push({ x: wall[0], y: wall[1] });
+      }
+      
+      // Create ghosts
+      for (const ghost of level.ghosts) {
+        const ghostElement = document.createElement('div');
+        ghostElement.className = 'ghost';
+        ghostElement.textContent = '👻';
+        ghostElement.style.left = `${ghost[0] * 30}px`;
+        ghostElement.style.top = `${ghost[1] * 30}px`;
+        gameBoard.appendChild(ghostElement);
+        
+        // Add shadow to ghost
+        const ghostShadow = document.createElement('div');
+        ghostShadow.className = 'shadow';
+        ghostElement.appendChild(ghostShadow);
+        
+        ghosts.push({
+          element: ghostElement,
+          x: ghost[0],
+          y: ghost[1],
+          dirX: Math.random() > 0.5 ? 1 : -1,
+          dirY: Math.random() > 0.5 ? 1 : -1,
+          speed: ghost[2] || 0.5
+        });
+      }
+      
+      // Update level indicator
+      levelIndicator.textContent = `Level: ${currentLevel}`;
+      
+      // Reset game state
+      gameTime = 0;
+      gameActive = true;
+      updateStats();
+      
+      // Start game loop
+      if (gameInterval) clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, 50);
+      
+      // Set up event listeners
+      document.addEventListener('keydown', handleKeyPress);
+      restartButton.addEventListener('click', hideMessage);
+    }
+    
+    // Game loop
+    function gameLoop() {
+      if (!gameActive) return;
+      
+      // Update game time
+      gameTime += 0.05;
+      updateStats();
+      
+      // Move ghosts
+      moveGhosts();
+      
+      // Check for collisions
+      checkCollisions();
+      
+      // Apply 3D tilt effect based on player position
+      const tiltX = (playerX / 20) * 3 - 1.5;
+      const tiltY = (playerY / 14) * 3 - 1.5;
+      gameBoard.style.transform = `rotateX(${-tiltY}deg) rotateY(${tiltX}deg)`;
+    }
+    
+    // Move the ghosts
+    function moveGhosts() {
+      for (const ghost of ghosts) {
+        // Calculate potential new position
+        let newX = ghost.x + ghost.dirX * ghost.speed;
+        let newY = ghost.y + ghost.dirY * ghost.speed;
+        
+        // Check for wall collisions
+        const hitWall = walls.some(wall => 
+          Math.floor(newX) === wall.x && Math.floor(newY) === wall.y ||
+          Math.ceil(newX) === wall.x && Math.ceil(newY) === wall.y
+        );
+        
+        // Change direction if hitting a wall
+        if (hitWall || newX < 0 || newX > 19 || newY < 0 || newY > 12) {
+          if (Math.random() < 0.5) {
+            ghost.dirX *= -1;
+            newX = ghost.x + ghost.dirX * ghost.speed;
+          } else {
+            ghost.dirY *= -1;
+            newY = ghost.y + ghost.dirY * ghost.speed;
+          }
+          
+          // If still hitting a wall, reverse both directions
+          if (walls.some(wall => 
+            Math.floor(newX) === wall.x && Math.floor(newY) === wall.y ||
+            Math.ceil(newX) === wall.x && Math.ceil(newY) === wall.y
+          ) || newX < 0 || newX > 19 || newY < 0 || newY > 12) {
+            ghost.dirX *= -1;
+            ghost.dirY *= -1;
+            newX = ghost.x + ghost.dirX * ghost.speed;
+            newY = ghost.y + ghost.dirY * ghost.speed;
+          }
+        }
+        
+        // Update ghost position
+        ghost.x = newX;
+        ghost.y = newY;
+        ghost.element.style.left = `${ghost.x * 30}px`;
+        ghost.element.style.top = `${ghost.y * 30}px`;
+      }
+    }
+    
+    // Handle key presses
+    function handleKeyPress(e) {
+      if (!gameActive) return;
+      
+      let newX = playerX;
+      let newY = playerY;
+      
+      // Handle different key inputs
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          newY--;
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          newY++;
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          newX--;
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          newX++;
+          break;
+        default:
+          return;
+      }
+      
+      // Prevent default behavior for game controls
+      e.preventDefault();
+      
+      // Check for wall collision
+      if (!walls.some(wall => wall.x === newX && wall.y === newY)) {
+        playerX = newX;
+        playerY = newY;
+        player.style.left = `${playerX * 30}px`;
+        player.style.top = `${playerY * 30}px`;
+        
+        // Check for exit
+        const exitX = parseInt(exit.style.left) / 30;
+        const exitY = parseInt(exit.style.top) / 30;
+        
+        if (playerX === exitX && playerY === exitY) {
+          levelComplete();
+        }
+      }
+    }
+    
+    // Check for collisions with ghosts
+    function checkCollisions() {
+      for (const ghost of ghosts) {
+        const ghostX = Math.round(ghost.x);
+        const ghostY = Math.round(ghost.y);
+        
+        if (Math.abs(ghostX - playerX) < 0.7 && Math.abs(ghostY - playerY) < 0.7) {
+          loseLife();
+          return;
+        }
+      }
+    }
+    
+    // Lose a life
+    function loseLife() {
+      lives--;
+      updateStats();
+      
+      // Flash the player
+      player.style.opacity = '0.5';
+      setTimeout(() => {
+        player.style.opacity = '1';
+      }, 300);
+      
+      // Reset player position
+      const level = levels[currentLevel - 1];
+      playerX = level.playerStart[0];
+      playerY = level.playerStart[1];
+      player.style.left = `${playerX * 30}px`;
+      player.style.top = `${playerY * 30}px`;
+      
+      // Check for game over
+      if (lives <= 0) {
+        gameOver();
+      }
+    }
+    
+    // Game over
+    function gameOver() {
+      gameActive = false;
+      messageTitle.textContent = 'Game Over';
+      messageText.textContent = `You lost all your lives after ${Math.floor(gameTime)}s!`;
+      gameMessage.style.display = 'block';
+      
+      // Reset for a new game
+      lives = 3;
+      currentLevel = 1;
+    }
+    
+    // Level complete
+    function levelComplete() {
+      if (currentLevel < maxLevel) {
+        currentLevel++;
+        messageTitle.textContent = 'Level Complete!';
+        messageText.textContent = `You completed level ${currentLevel-1} in ${Math.floor(gameTime)}s!`;
+        gameMessage.style.display = 'block';
+        
+        // Keep track of game state while showing message
+        gameActive = false;
+      } else {
+        // Game complete
+        messageTitle.textContent = 'You Win!';
+        messageText.textContent = `Congratulations! You escaped the haunted maze in ${Math.floor(gameTime)}s with ${lives} lives remaining!`;
+        gameMessage.style.display = 'block';
+        
+        // Reset for a new game
+        gameActive = false;
+        lives = 3;
+        currentLevel = 1;
+      }
+    }
+    
+    // Hide message and continue game
+    function hideMessage() {
+      gameMessage.style.display = 'none';
+      initGame();
+    }
+    
+    // Update game stats
+    function updateStats() {
+      gameStats.textContent = `Lives: ${lives} | Time: ${Math.floor(gameTime)}s`;
+    }
+    
+    // Initialize the game
+    initGame();
+  </script>
+</body>
+</html>

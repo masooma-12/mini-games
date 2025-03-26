@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Challenge</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/confetti-js/0.0.18/confetti.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            position: relative;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .welcome-screen, .game-screen {
+            transition: opacity 0.5s;
+        }
+        
+        .welcome-screen {
+            text-align: center;
+        }
+        
+        .welcome-screen h2 {
+            margin-bottom: 30px;
+        }
+        
+        .welcome-screen input {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .welcome-screen button {
+            padding: 12px 30px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        .game-screen {
+            display: none;
+        }
+        
+        .difficulty-controls {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        button.difficulty-btn {
+            flex: 1;
+        }
+        
+        button.difficulty-btn.active {
+            background-color: #2c3e50;
+        }
+        
+        .game-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .sudoku-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            position: relative;
+        }
+        
+        .sudoku-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #2c3e50;
+        }
+        
+        .grid-4x4 {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+        
+        .grid-6x6 {
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+        
+        .grid-8x8 {
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+        }
+        
+        .grid-9x9 {
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(9, 1fr);
+        }
+        
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ccc;
+            font-size: 1.5rem;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        
+        /* 4x4 grid borders */
+        .grid-4x4 .cell:nth-child(2n) {
+            border-right: 2px solid #2c3e50;
+        }
+        
+        .grid-4x4 .cell:nth-child(n+5):nth-child(-n+8) {
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        /* 6x6 grid borders */
+        .grid-6x6 .cell:nth-child(3n) {
+            border-right: 2px solid #2c3e50;
+        }
+        
+        .grid-6x6 .cell:nth-child(n+7):nth-child(-n+12),
+        .grid-6x6 .cell:nth-child(n+25):nth-child(-n+30) {
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        /* 8x8 grid borders */
+        .grid-8x8 .cell:nth-child(4n) {
+            border-right: 2px solid #2c3e50;
+        }
+        
+        .grid-8x8 .cell:nth-child(n+9):nth-child(-n+16),
+        .grid-8x8 .cell:nth-child(n+41):nth-child(-n+48) {
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        /* 9x9 grid borders */
+        .grid-9x9 .cell:nth-child(3n) {
+            border-right: 2px solid #2c3e50;
+        }
+        
+        .grid-9x9 .cell:nth-child(n+19):nth-child(-n+27),
+        .grid-9x9 .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        .cell.prefilled {
+            background-color: #f5f7fa;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .cell.selected {
+            background-color: #d6eaf8;
+        }
+        
+        .cell.invalid {
+            color: #e74c3c;
+        }
+        
+        .cell.highlight {
+            background-color: #eef7fe;
+        }
+        
+        .numpad {
+            display: grid;
+            grid-gap: 5px;
+            margin-top: 20px;
+        }
+        
+        .numpad-4x4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        
+        .numpad-6x6 {
+            grid-template-columns: repeat(6, 1fr);
+        }
+        
+        .numpad-8x8, .numpad-9x9 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        
+        .numpad button {
+            font-size: 1.2rem;
+            padding: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .timer, .mistakes {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal.show .modal-content {
+            transform: translateY(0);
+        }
+        
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 90;
+            pointer-events: none;
+        }
+        
+        .leaderboard {
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .leaderboard h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        .performance-meter {
+            margin-top: 20px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .meter-container {
+            height: 20px;
+            background-color: #eee;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            border-radius: 10px;
+            transition: width 1s;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .cell {
+                font-size: 1rem;
+            }
+            
+            .numpad {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .difficulty-controls {
+                flex-direction: column;
+            }
+        }
+        
+        #playerNameDisplay {
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sudoku Challenge</h1>
+        </header>
+        
+        <!-- Welcome Screen -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <h2>Welcome to Sudoku Challenge!</h2>
+            <p>Test your brain power with puzzles of different sizes and difficulties.</p>
+            <input type="text" id="initialPlayerNameInput" placeholder="Enter your name" maxlength="20">
+            <button id="startGameBtn">Start Game</button>
+        </div>
+        
+        <!-- Game Screen -->
+        <div class="game-screen" id="gameScreen">
+            <p>Welcome, <span id="playerNameDisplay">Player</span>!</p>
+            
+            <div class="difficulty-controls">
+                <button class="difficulty-btn active" data-difficulty="easy" data-size="4">Easy (4×4)</button>
+                <button class="difficulty-btn" data-difficulty="medium" data-size="6">Medium (6×6)</button>
+                <button class="difficulty-btn" data-difficulty="hard" data-size="8">Hard (8×8)</button>
+                <button class="difficulty-btn" data-difficulty="expert" data-size="9">Expert (9×9)</button>
+            </div>
+            
+            <div class="game-controls">
+                <button id="newGameBtn">New Game</button>
+                <button id="hintBtn">Get Hint</button>
+                <button id="checkBtn">Check Puzzle</button>
+            </div>
+            
+            <div class="stats">
+                <div class="timer">
+                    <span>Time</span>
+                    <span id="timer">00:00</span>
+                </div>
+                <div class="mistakes">
+                    <span>Mistakes</span>
+                    <span id="mistakes">0 / 3</span>
+                </div>
+            </div>
+            
+            <div class="sudoku-container">
+                <div class="sudoku-grid" id="sudokuGrid"></div>
+            </div>
+            
+            <div class="numpad" id="numpad"></div>
+            
+            <div class="performance-meter">
+                <h3>Brain Performance</h3>
+                <div class="meter-container">
+                    <div class="meter-fill" id="performanceMeter" style="width: 0%;"></div>
+                </div>
+                <p>Current Rating: <span id="performanceRating">0</span> points</p>
+            </div>
+            
+            <div class="leaderboard">
+                <h2>Leaderboard</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Difficulty</th>
+                            <th>Time</th>
+                            <th>Brain Power</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Leaderboard entries will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <h2>Congratulations!</h2>
+            <p>You solved the puzzle successfully!</p>
+            <div class="win-stats">
+                <p>Time: <span id="winTime"></span></p>
+                <p>Difficulty: <span id="winDifficulty"></span></p>
+                <p>Brain Power: <span id="winScore"></span></p>
+            </div>
+            <button id="closeWinModal">Close</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="nameModal">
+        <div class="modal-content">
+            <h2>Enter Your Name</h2>
+            <input type="text" id="playerNameInput" placeholder="Your name" maxlength="20">
+            <button id="saveNameBtn" style="margin-top: 15px;">Save</button>
+        </div>
+    </div>
+    
+    <canvas id="confetti-canvas"></canvas>
+    
+    <script>
+        // Sudoku Game Logic
+        class SudokuGame {
+            constructor() {
+                this.grid = [];
+                this.solution = [];
+                this.prefilled = [];
+                this.difficulty = 'easy';
+                this.gridSize = 4; // Default to 4x4
+                this.mistakes = 0;
+                this.maxMistakes = 3;
+                this.timer = 0;
+                this.timerInterval = null;
+                this.selectedCell = null;
+                this.gameActive = false;
+                this.difficultyValues = {
+                    'easy': { size: 4, empty: 6, score: 100 },
+                    'medium': { size: 6, empty: 15, score: 200 },
+                    'hard': { size: 8, empty: 30, score: 350 },
+                    'expert': { size: 9, empty: 40, score: 500 }
+                };
+                
+                // Initialize game
+                this.initializeGame();
+            }
+            
+            initializeGame() {
+                this.loadPlayerName();
+                this.loadLeaderboard();
+                
+                // Show welcome screen or game screen
+                if (!this.playerName || this.playerName === 'Player') {
+                    document.getElementById('welcomeScreen').style.display = 'block';
+                    document.getElementById('gameScreen').style.display = 'none';
+                } else {
+                    document.getElementById('welcomeScreen').style.display = 'none';
+                    document.getElementById('gameScreen').style.display = 'block';
+                    this.setupGame();
+                }
+                
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                // Welcome screen event
+                document.getElementById('startGameBtn').addEventListener('click', () => {
+                    const nameInput = document.getElementById('initialPlayerNameInput');
+                    const name = nameInput.value.trim();
+                    if (name) {
+                        this.playerName = name;
+                        document.getElementById('playerNameDisplay').textContent = name;
+                        localStorage.setItem('sudokuPlayerName', name);
+                        
+                        document.getElementById('welcomeScreen').style.display = 'none';
+                        document.getElementById('gameScreen').style.display = 'block';
+                        this.setupGame();
+                    } else {
+                        alert('Please enter your name to continue.');
+                    }
+                });
+                
+                // Difficulty buttons
+                document.querySelectorAll('.difficulty-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        document.querySelector('.difficulty-btn.active').classList.remove('active');
+                        button.classList.add('active');
+                        this.difficulty = button.dataset.difficulty;
+                        this.gridSize = parseInt(button.dataset.size);
+                        this.setupGame();
+                    });
+                });
+                
+                // Game control buttons
+                document.getElementById('newGameBtn').addEventListener('click', () => {
+                    this.createNewGame();
+                });
+                
+                document.getElementById('hintBtn').addEventListener('click', () => {
+                    this.getHint();
+                });
+                
+                document.getElementById('checkBtn').addEventListener('click', () => {
+                    this.checkPuzzle();
+                });
+                
+                // Win modal
+                document.getElementById('closeWinModal').addEventListener('click', () => {
+                    document.getElementById('winModal').classList.remove('show');
+                });
+                
+                // Player name
+                document.getElementById('playerNameDisplay').addEventListener('click', () => {
+                    document.getElementById('playerNameInput').value = this.playerName || '';
+                    document.getElementById('nameModal').classList.add('show');
+                });
+                
+                document.getElementById('saveNameBtn').addEventListener('click', () => {
+                    const name = document.getElementById('playerNameInput').value.trim();
+                    if (name) {
+                        this.playerName = name;
+                        document.getElementById('playerNameDisplay').textContent = name;
+                        localStorage.setItem('sudokuPlayerName', name);
+                        document.getElementById('nameModal').classList.remove('show');
+                    }
+                });
+                
+                // Keyboard events
+                document.addEventListener('keydown', (e) => {
+                    if (this.selectedCell && this.gameActive) {
+                        const maxNum = this.gridSize;
+                        if (e.key >= '1' && e.key <= maxNum.toString()) {
+                            this.fillCell(parseInt(e.key));
+                        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                            this.eraseCell();
+                        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
+                                   e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                            this.moveCellSelection(e.key);
+                        }
+                    }
+                });
+            }
+            
+            setupGame() {
+                // Clear existing grid
+                const grid = document.getElementById('sudokuGrid');
+                grid.innerHTML = '';
+                
+                // Set appropriate grid class
+                grid.className = 'sudoku-grid';
+                grid.classList.add(`grid-${this.gridSize}x${this.gridSize}`);
+                
+                // Create grid cells
+                for (let i = 0; i < this.gridSize * this.gridSize; i++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = Math.floor(i / this.gridSize);
+                    cell.dataset.col = i % this.gridSize;
+                    cell.addEventListener('click', () => this.selectCell(cell));
+                    grid.appendChild(cell);
+                }
+                
+                // Setup numpad
+                const numpad = document.getElementById('numpad');
+                numpad.innerHTML = '';
+                numpad.className = 'numpad';
+                numpad.classList.add(`numpad-${this.gridSize}x${this.gridSize}`);
+                
+                for (let num = 1; num <= this.gridSize; num++) {
+                    const button = document.createElement('button');
+                    button.dataset.num = num;
+                    button.textContent = num;
+                    button.addEventListener('click', () => {
+                        if (this.selectedCell && this.gameActive) {
+                            this.fillCell(parseInt(button.dataset.num));
+                        }
+                    });
+                    numpad.appendChild(button);
+                }
+                
+                // Add erase button
+                const eraseBtn = document.createElement('button');
+                eraseBtn.id = 'eraseBtn';
+                eraseBtn.textContent = 'Erase';
+                eraseBtn.addEventListener('click', () => {
+                    if (this.selectedCell && this.gameActive) {
+                        this.eraseCell();
+                    }
+                });
+                numpad.appendChild(eraseBtn);
+                
+                // Initialize arrays based on grid size
+                this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(0));
+                this.solution = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(0));
+                this.prefilled = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(false));
+                
+                // Create new game
+                this.createNewGame();
+            }
+            
+            loadPlayerName() {
+                this.playerName = localStorage.getItem('sudokuPlayerName') || 'Player';
+                document.getElementById('playerNameDisplay').textContent = this.playerName;
+            }
+            
+            loadLeaderboard() {
+                const leaderboard = JSON.parse(localStorage.getItem('sudokuLeaderboard')) || [];
+                this.updateLeaderboardDisplay(leaderboard);
+            }
+            
+            saveLeaderboard(entry) {
+                let leaderboard = JSON.parse(localStorage.getItem('sudokuLeaderboard')) || [];
+                leaderboard.push(entry);
+                leaderboard.sort((a, b) => b.score - a.score);
+                if (leaderboard.length > 10) {
+                    leaderboard = leaderboard.slice(0, 10);
+                }
+                localStorage.setItem('sudokuLeaderboard', JSON.stringify(leaderboard));
+                this.updateLeaderboardDisplay(leaderboard);
+            }
+            
+            updateLeaderboardDisplay(leaderboard) {
+                const tbody = document.getElementById('leaderboardBody');
+                tbody.innerHTML = '';
+                
+                leaderboard.forEach((entry, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.player}</td>
+                        <td>${entry.difficulty}</td>
+                        <td>${entry.time}</td>
+                        <td>${entry.score}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // Add empty rows if less than 5 entries
+                for (let i = leaderboard.length; i < 5; i++) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${i + 1}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            }
+            
+            selectCell(cell) {
+                if (!this.gameActive) return;
+                
+                // Remove previous selection
+                if (this.selectedCell) {
+                    this.selectedCell.classList.remove('selected');
+                }
+                
+                // Remove any highlights
+                document.querySelectorAll('.cell.highlight').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+                
+                cell.classList.add('selected');
+                this.selectedCell = cell;
+                
+                // Highlight same number cells
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const num = this.grid[row][col];
+                
+                if (num !== 0) {
+                    document.querySelectorAll('.cell').forEach(other => {
+                        const r = parseInt(other.dataset.row);
+                        const c = parseInt(other.dataset.col);
+                        if (r < this.gridSize && c < this.gridSize && this.grid[r][c] === num) {
+                            other.classList.add('highlight');
+                        }
+                    });
+                }
+            }
+            
+            moveCellSelection(direction) {
+                if (!this.selectedCell) return;
+                
+                let row = parseInt(this.selectedCell.dataset.row);
+                let col = parseInt(this.selectedCell.dataset.col);
+                
+                switch (direction) {
+                    case 'ArrowUp':
+                        row = (row - 1 + this.gridSize) % this.gridSize;
+                        break;
+                    case 'ArrowDown':
+                        row = (row + 1) % this.gridSize;
+                        break;
+                    case 'ArrowLeft':
+                        col = (col - 1 + this.gridSize) % this.gridSize;
+                        break;
+                    case 'ArrowRight':
+                        col = (col + 1) % this.gridSize;
+                        break;
+                }
+                
+                const newCell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                if (newCell) {
+                    this.selectCell(newCell);
+                }
+            }
+            
+            fillCell(num) {
+                if (!this.selectedCell) return;
+                
+                const row = parseInt(this.selectedCell.dataset.row);
+                const col = parseInt(this.selectedCell.dataset.col);
+                
+                if (this.prefilled[row][col]) return;
+                
+                this.selectedCell.textContent = num;
+                this.grid[row][col] = num;
+                
+                // Check if the entry is valid
+                if (num !== this.solution[row][col]) {
+                    this.selectedCell.classList.add('invalid');
+                    this.mistakes++;
+                    document.getElementById('mistakes').textContent = `${this.mistakes} / ${this.maxMistakes}`;
+                    
+                    if (this.mistakes >= this.maxMistakes) {
+                        alert('Game over! You made too many mistakes.');
+                        this.endGame(false);
+                    }
+                } else {
+                    this.selectedCell.classList.remove('invalid');
+                    
+                    // Check if puzzle is complete
+                    if (this.isPuzzleComplete()) {
+                        this.winGame();
+                    }
+                }
+                
+                // Highlight same number cells
+                document.querySelectorAll('.cell.highlight').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+                
+                document.querySelectorAll('.cell').forEach(other => {
+                    const r = parseInt(other.dataset.row);
+                    const c = parseInt(other.dataset.col);
+                    if (r < this.gridSize && c < this.gridSize && this.grid[r][c] === num) {
+                        other.classList.add('highlight');
+                    }
+                });
+                
+                // Update performance meter
+                this.updatePerformanceMeter();
+            }
+            
+            eraseCell() {
+                if (!this.selectedCell) return;
+                
+                const row = parseInt(this.selectedCell.dataset.row);
+                const col = parseInt(this.selectedCell.dataset.col);
+                
+                if (this.prefilled[row][col]) return;
+                
+                this.selectedCell.textContent = '';
+                this.selectedCell.classList.remove('invalid');
+                this.grid[row][col] = 0;
+                
+                // Remove any highlights
+                document.querySelectorAll('.cell.highlight').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+                
+                // Update performance meter
+                this.updatePerformanceMeter();
+            }
+            
+            isPuzzleComplete() {
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        if (this.grid[row][col] !== this.solution[row][col]) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            getHint() {
+                if (!this.gameActive) return;
+                
+                // Find an empty or incorrect cell
+                let emptyOrIncorrectCells = [];
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        if (this.grid[row][col] !== this.solution[row][col]) {
+                            emptyOrIncorrectCells.push({row, col});
+                        }
+                    }
+                }
+                
+                if (emptyOrIncorrectCells.length === 0) return;
+                
+                // Pick a random cell to give a hint for
+                const hintIdx = Math.floor(Math.random() * emptyOrIncorrectCells.length);
+                const {row, col} = emptyOrIncorrectCells[hintIdx];
+                
+                // Select the cell and fill it
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                this.selectCell(cell);
+                this.selectedCell.textContent = this.solution[row][col];
+                this.selectedCell.classList.remove('invalid');
+                this.grid[row][col] = this.solution[row][col];
+                
+                // Update performance meter
+                this.updatePerformanceMeter();
+                
+                // Check if puzzle is complete
+                if (this.isPuzzleComplete()) {
+                    this.winGame();
+                }
+            }
+            
+            checkPuzzle() {
+                if (!this.gameActive) return;
+                
+                let incorrect = 0;
+                
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                        const value = this.grid[row][col];
+                        
+                        if (value !== 0 && value !== this.solution[row][col]) {
+                            cell.classList.add('invalid');
+                            incorrect++;
+                        } else if (value !== 0) {
+                            cell.classList.remove('invalid');
+                        }
+                    }
+                }// Show alert with results
+                if (incorrect === 0) {
+                    if (this.isPuzzleComplete()) {
+                        this.winGame();
+                    } else {
+                        alert('Looking good! All filled entries are correct.');
+                    }
+                } else {
+                    alert(`Found ${incorrect} incorrect entries.`);
+                }
+            }
+            
+            createNewGame() {
+                // Reset game state
+                this.mistakes = 0;
+                document.getElementById('mistakes').textContent = `${this.mistakes} / ${this.maxMistakes}`;
+                
+                // Reset timer
+                clearInterval(this.timerInterval);
+                this.timer = 0;
+                document.getElementById('timer').textContent = '00:00';
+                
+                // Generate a new puzzle
+                this.generateSolution();
+                this.createPuzzleFromSolution();
+                
+                // Update grid display
+                this.updateGridDisplay();
+                
+                // Reset performance meter
+                document.getElementById('performanceMeter').style.width = '0%';
+                document.getElementById('performanceRating').textContent = '0';
+                
+                // Start timer
+                this.startTimer();
+                
+                // Set game as active
+                this.gameActive = true;
+            }
+            
+            generateSolution() {
+                // For simplicity, we'll use predefined solutions based on grid size
+                if (this.gridSize === 4) {
+                    this.solution = [
+                        [1, 2, 3, 4],
+                        [3, 4, 1, 2],
+                        [2, 1, 4, 3],
+                        [4, 3, 2, 1]
+                    ];
+                } else if (this.gridSize === 6) {
+                    this.solution = [
+                        [1, 2, 3, 4, 5, 6],
+                        [4, 5, 6, 1, 2, 3],
+                        [2, 3, 1, 6, 4, 5],
+                        [5, 6, 4, 3, 1, 2],
+                        [3, 1, 2, 5, 6, 4],
+                        [6, 4, 5, 2, 3, 1]
+                    ];
+                } else if (this.gridSize === 8) {
+                    this.solution = [
+                        [1, 2, 3, 4, 5, 6, 7, 8],
+                        [5, 6, 7, 8, 1, 2, 3, 4],
+                        [3, 4, 1, 2, 7, 8, 5, 6],
+                        [7, 8, 5, 6, 3, 4, 1, 2],
+                        [2, 1, 4, 3, 6, 5, 8, 7],
+                        [6, 5, 8, 7, 2, 1, 4, 3],
+                        [4, 3, 2, 1, 8, 7, 6, 5],
+                        [8, 7, 6, 5, 4, 3, 2, 1]
+                    ];
+                } else if (this.gridSize === 9) {
+                    this.solution = [
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [4, 5, 6, 7, 8, 9, 1, 2, 3],
+                        [7, 8, 9, 1, 2, 3, 4, 5, 6],
+                        [2, 3, 4, 5, 6, 7, 8, 9, 1],
+                        [5, 6, 7, 8, 9, 1, 2, 3, 4],
+                        [8, 9, 1, 2, 3, 4, 5, 6, 7],
+                        [3, 4, 5, 6, 7, 8, 9, 1, 2],
+                        [6, 7, 8, 9, 1, 2, 3, 4, 5],
+                        [9, 1, 2, 3, 4, 5, 6, 7, 8]
+                    ];
+                }
+                
+                // Shuffle the solution to create different puzzles
+                this.shuffleSolution();
+            }
+            
+            shuffleSolution() {
+                // Shuffle rows within groups
+                const shuffleRowsWithinGroup = (groupSize) => {
+                    for (let i = 0; i < this.gridSize; i += groupSize) {
+                        for (let j = 0; j < 10; j++) { // Do 10 random swaps per group
+                            const idx1 = i + Math.floor(Math.random() * groupSize);
+                            const idx2 = i + Math.floor(Math.random() * groupSize);
+                            if (idx1 !== idx2) {
+                                const temp = this.solution[idx1];
+                                this.solution[idx1] = this.solution[idx2];
+                                this.solution[idx2] = temp;
+                            }
+                        }
+                    }
+                };
+                
+                // Shuffle columns within groups
+                const shuffleColumnsWithinGroup = (groupSize) => {
+                    for (let i = 0; i < this.gridSize; i += groupSize) {
+                        for (let j = 0; j < 10; j++) { // Do 10 random swaps per group
+                            const idx1 = i + Math.floor(Math.random() * groupSize);
+                            const idx2 = i + Math.floor(Math.random() * groupSize);
+                            if (idx1 !== idx2) {
+                                for (let row = 0; row < this.gridSize; row++) {
+                                    const temp = this.solution[row][idx1];
+                                    this.solution[row][idx1] = this.solution[row][idx2];
+                                    this.solution[row][idx2] = temp;
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                // Define group size based on grid size
+                let groupSize = 2; // For 4x4
+                if (this.gridSize === 6) groupSize = 3;
+                else if (this.gridSize === 8) groupSize = 4;
+                else if (this.gridSize === 9) groupSize = 3;
+                
+                // Shuffle
+                shuffleRowsWithinGroup(groupSize);
+                shuffleColumnsWithinGroup(groupSize);
+            }
+            
+            createPuzzleFromSolution() {
+                // Copy solution to grid
+                this.grid = this.solution.map(row => [...row]);
+                
+                // Reset prefilled
+                this.prefilled = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(false));
+                
+                // Determine number of cells to remove
+                const emptyCells = this.difficultyValues[this.difficulty].empty;
+                
+                // Array of all possible positions
+                let positions = [];
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        positions.push({row, col});
+                    }
+                }
+                
+                // Shuffle positions
+                for (let i = positions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+                
+                // Remove values from selected positions
+                for (let i = 0; i < emptyCells && i < positions.length; i++) {
+                    const {row, col} = positions[i];
+                    this.grid[row][col] = 0;
+                }
+                
+                // Mark filled cells as prefilled
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        if (this.grid[row][col] !== 0) {
+                            this.prefilled[row][col] = true;
+                        }
+                    }
+                }
+            }
+            
+            updateGridDisplay() {
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                        cell.classList.remove('prefilled', 'selected', 'invalid', 'highlight');
+                        
+                        if (this.grid[row][col] !== 0) {
+                            cell.textContent = this.grid[row][col];
+                            if (this.prefilled[row][col]) {
+                                cell.classList.add('prefilled');
+                            }
+                        } else {
+                            cell.textContent = '';
+                        }
+                    }
+                }
+                
+                this.selectedCell = null;
+                document.querySelectorAll('.cell.highlight').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+            }
+            
+            startTimer() {
+                clearInterval(this.timerInterval);
+                this.timer = 0;
+                document.getElementById('timer').textContent = '00:00';
+                
+                this.timerInterval = setInterval(() => {
+                    this.timer++;
+                    const minutes = Math.floor(this.timer / 60);
+                    const seconds = this.timer % 60;
+                    document.getElementById('timer').textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+            
+            endGame(isWin) {
+                clearInterval(this.timerInterval);
+                this.gameActive = false;
+                
+                if (isWin) {
+                    // Display win stats
+                    const minutes = Math.floor(this.timer / 60);
+                    const seconds = this.timer % 60;
+                    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    document.getElementById('winTime').textContent = timeString;
+                    document.getElementById('winDifficulty').textContent = this.difficulty;
+                    
+                    // Calculate score
+                    const baseScore = this.difficultyValues[this.difficulty].score;
+                    const timeScore = Math.max(0, 300 - Math.floor(this.timer / 10)); // Time bonus
+                    const mistakesPenalty = this.mistakes * 20;
+                    const score = baseScore + timeScore - mistakesPenalty;
+                    
+                    document.getElementById('winScore').textContent = score;
+                    
+                    // Save to leaderboard
+                    this.saveLeaderboard({
+                        player: this.playerName,
+                        difficulty: this.difficulty,
+                        time: timeString,
+                        score: score
+                    });
+                    
+                    // Show win modal
+                    document.getElementById('winModal').classList.add('show');
+                    
+                    // Show confetti
+                    const confettiSettings = { target: 'confetti-canvas', max: 100 };
+                    const confetti = new ConfettiGenerator(confettiSettings);
+                    confetti.render();
+                    
+                    // Stop confetti after 5 seconds
+                    setTimeout(() => {
+                        confetti.clear();
+                    }, 5000);
+                }
+            }
+            
+            winGame() {
+                this.endGame(true);
+            }
+            
+            updatePerformanceMeter() {
+                let filled = 0;
+                let total = this.gridSize * this.gridSize;
+                let prefilled = 0;
+                
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        if (this.grid[row][col] !== 0) {
+                            filled++;
+                        }
+                        if (this.prefilled[row][col]) {
+                            prefilled++;
+                        }
+                    }
+                }
+                
+                const userFilled = filled - prefilled;
+                const toFill = total - prefilled;
+                const percentage = Math.round((userFilled / toFill) * 100);
+                
+                document.getElementById('performanceMeter').style.width = `${percentage}%`;
+                
+                // Calculate brain performance rating
+                const baseScore = this.difficultyValues[this.difficulty].score;
+                const completionScore = Math.round((userFilled / toFill) * baseScore);
+                document.getElementById('performanceRating').textContent = completionScore;
+            }
+        }
+        
+        // Initialize game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const game = new SudokuGame();
+        });
+    </script>
+</body>
+</html>

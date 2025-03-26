@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #87CEEB, #1E90FF);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      max-width: 90%;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    button {
+      background: #1E90FF;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #00BFFF;
+    }
+
+    #sudoku-grid {
+      display: grid;
+      gap: 2px;
+      margin: 20px auto;
+    }
+
+    #sudoku-grid input {
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      font-size: 18px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #000;
+    }
+
+    #sudoku-grid input:focus {
+      outline: none;
+      border-color: #1E90FF;
+    }
+
+    #sudoku-grid input.error {
+      background: #ffcccc;
+    }
+
+    #timer {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+    }
+
+    #leaderboard-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    #leaderboard-list li {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+    }
+
+    @media (max-width: 600px) {
+      #sudoku-grid input {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Sudoku Game</h1>
+    <div id="start-screen">
+      <button id="start-btn">Start Game</button>
+    </div>
+    <div id="difficulty-screen" class="hidden">
+      <h2>Select Difficulty</h2>
+      <button id="easy-btn">4x4 (Easy)</button>
+      <button id="medium-btn">6x6 (Medium)</button>
+      <button id="hard-btn">8x8 (Hard)</button>
+      <button id="expert-btn">9x9 (Expert)</button>
+    </div>
+    <div id="player-screen" class="hidden">
+      <h2>Enter Your Name</h2>
+      <input type="text" id="player-name" placeholder="Your Name">
+      <button id="play-btn">Play</button>
+    </div>
+    <div id="game-screen" class="hidden">
+      <h2 id="game-title">Sudoku</h2>
+      <div id="timer">Time: 0s</div>
+      <div id="sudoku-grid"></div>
+      <button id="hint-btn">Hint</button>
+      <button id="submit-btn">Submit</button>
+    </div>
+    <div id="result-screen" class="hidden">
+      <h2 id="result-message"></h2>
+      <p id="brain-power"></p>
+      <button id="play-again-btn">Play Again</button>
+    </div>
+    <div id="leaderboard">
+      <h2>Leaderboard</h2>
+      <ul id="leaderboard-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('start-btn');
+    const difficultyScreen = document.getElementById('difficulty-screen');
+    const playerScreen = document.getElementById('player-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const playerNameInput = document.getElementById('player-name');
+    const playBtn = document.getElementById('play-btn');
+    const sudokuGrid = document.getElementById('sudoku-grid');
+    const submitBtn = document.getElementById('submit-btn');
+    const hintBtn = document.getElementById('hint-btn');
+    const resultMessage = document.getElementById('result-message');
+    const brainPower = document.getElementById('brain-power');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const leaderboardList = document.getElementById('leaderboard-list');
+    const timerDisplay = document.getElementById('timer');
+
+    let difficulty = 'easy';
+    let playerName = '';
+    let startTime;
+    let endTime;
+    let timerInterval;
+    let solvedGrid = [];
+    let gridSize = 4; // Default grid size
+
+    // Event listeners
+    startBtn.addEventListener('click', () => {
+      document.getElementById('start-screen').classList.add('hidden');
+      difficultyScreen.classList.remove('hidden');
+    });
+
+    document.querySelectorAll('#difficulty-screen button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        difficulty = e.target.id.replace('-btn', '');
+        gridSize = difficulty === 'easy' ? 4 : difficulty === 'medium' ? 6 : difficulty === 'hard' ? 8 : 9;
+        difficultyScreen.classList.add('hidden');
+        playerScreen.classList.remove('hidden');
+      });
+    });
+
+    playBtn.addEventListener('click', () => {
+      playerName = playerNameInput.value.trim();
+      if (playerName) {
+        playerScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        generateSudoku(gridSize);
+        startTime = new Date();
+        startTimer();
+      }
+    });
+
+    submitBtn.addEventListener('click', checkSolution);
+
+    hintBtn.addEventListener('click', giveHint);
+
+    playAgainBtn.addEventListener('click', () => {
+      resultScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      generateSudoku(gridSize);
+      startTime = new Date();
+      startTimer();
+    });
+
+    // Generate Sudoku puzzle
+    function generateSudoku(size) {
+      sudokuGrid.innerHTML = '';
+      sudokuGrid.style.gridTemplateColumns = `repeat(${size}, 40px)`;
+      sudokuGrid.style.gridTemplateRows = `repeat(${size}, 40px)`;
+      solvedGrid = generateSolvedGrid(size);
+      const preFilledCount = Math.floor(size * size * (size === 4 ? 0.5 : size === 6 ? 0.4 : size === 8 ? 0.3 : 0.25));
+      const indices = new Set();
+      while (indices.size < preFilledCount) {
+        indices.add(Math.floor(Math.random() * size * size));
+      }
+      for (let i = 0; i < size * size; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 1;
+        if (indices.has(i)) {
+          input.value = solvedGrid[Math.floor(i / size)][i % size];
+          input.disabled = true;
+        }
+        sudokuGrid.appendChild(input);
+      }
+    }
+
+    // Generate a solved Sudoku grid
+    function generateSolvedGrid(size) {
+      const grid = Array.from({ length: size }, () => Array(size).fill(0));
+      solveSudoku(grid, size);
+      return grid;
+    }
+
+    // Solve Sudoku (backtracking algorithm)
+    function solveSudoku(grid, size) {
+      for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+          if (grid[row][col] === 0) {
+            for (let num = 1; num <= size; num++) {
+              if (isValid(grid, row, col, num, size)) {
+                grid[row][col] = num;
+                if (solveSudoku(grid, size)) return true;
+                grid[row][col] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // Check if a number is valid in a cell
+    function isValid(grid, row, col, num, size) {
+      for (let i = 0; i < size; i++) {
+        if (grid[row][i] === num || grid[i][col] === num) return false;
+      }
+      const subgridSize = Math.sqrt(size);
+      const subgridRowStart = Math.floor(row / subgridSize) * subgridSize;
+      const subgridColStart = Math.floor(col / subgridSize) * subgridSize;
+      for (let i = 0; i < subgridSize; i++) {
+        for (let j = 0; j < subgridSize; j++) {
+          if (grid[subgridRowStart + i][subgridColStart + j] === num) return false;
+        }
+      }
+      return true;
+    }
+
+    // Check solution
+    function checkSolution() {
+      endTime = new Date();
+      const timeTaken = (endTime - startTime) / 1000; // in seconds
+      const isCorrect = validateSudoku(gridSize);
+
+      if (isCorrect) {
+        resultMessage.textContent = `Congratulations, ${playerName}! You solved the puzzle!`;
+        resultMessage.style.color = '#00FF00';
+        showConfetti();
+      } else {
+        resultMessage.textContent = `Sorry, ${playerName}. Try again!`;
+        resultMessage.style.color = '#FF0000';
+      }
+
+      const power = calculateBrainPower(timeTaken, difficulty);
+      brainPower.textContent = `Your Brain Power: ${power}`;
+
+      updateLeaderboard(playerName, power);
+      gameScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+      clearInterval(timerInterval);
+    }
+
+    // Validate Sudoku
+    function validateSudoku(size) {
+      const grid = [];
+      for (let i = 0; i < size; i++) {
+        grid[i] = [];
+        for (let j = 0; j < size; j++) {
+          const value = sudokuGrid.children[i * size + j].value;
+          if (!value || isNaN(value) || value < 1 || value > size) return false;
+          grid[i][j] = parseInt(value);
+        }
+      }
+      for (let i = 0; i < size; i++) {
+        const row = new Set();
+        const col = new Set();
+        for (let j = 0; j < size; j++) {
+          if (row.has(grid[i][j])) return false;
+          if (col.has(grid[j][i])) return false;
+          row.add(grid[i][j]);
+          col.add(grid[j][i]);
+        }
+      }
+      return true;
+    }
+
+    // Calculate brain power
+    function calculateBrainPower(timeTaken, difficulty) {
+      let baseScore = 1000;
+      if (difficulty === 'medium') baseScore = 2000;
+      if (difficulty === 'hard') baseScore = 3000;
+      if (difficulty === 'expert') baseScore = 4000;
+      return Math.round(baseScore / timeTaken);
+    }
+
+    // Update leaderboard
+    function updateLeaderboard(name, power) {
+      const entry = document.createElement('li');
+      entry.textContent = `${name}: ${power}`;
+      leaderboardList.appendChild(entry);
+    }
+
+    // Show confetti
+    function showConfetti() {
+      const confettiSettings = { target: 'confetti-canvas', max: 200 };
+      const confetti = new ConfettiGenerator(confettiSettings);
+      confetti.render();
+      setTimeout(() => confetti.clear(), 5000);
+    }
+
+    // Start timer
+    function startTimer() {
+      let seconds = 0;
+      timerInterval = setInterval(() => {
+        seconds++;
+        timerDisplay.textContent = `Time: ${seconds}s`;
+      }, 1000);
+    }
+
+    // Give hint
+    function giveHint() {
+      const emptyCells = [];
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        if (!sudokuGrid.children[i].value) emptyCells.push(i);
+      }
+      if (emptyCells.length > 0) {
+        const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        sudokuGrid.children[randomIndex].value = solvedGrid[Math.floor(randomIndex / gridSize)][randomIndex % gridSize];
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
+</body>
+</html>

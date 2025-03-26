@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Emoji Bike Racing Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #leaderboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        #leaderboard h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Distance: <span id="distance">0</span>m</div>
+        <div>Power: <span id="power">0</span></div>
+        <div>Speed: <span id="speedDisplay">4</span> km/h</div>
+    </div>
+    
+    <div id="leaderboard">
+        <h3>🏆 Leaderboard 🏆</h3>
+        <ol id="leaderboardList"></ol>
+    </div>
+    
+    <div id="gameOver">
+        <h2>Game Over!</h2>
+        <p>Your score: <span id="finalScore">0</span></p>
+        <p>Enter your name:</p>
+        <input type="text" id="playerName" maxlength="10">
+        <button id="submitScore">Submit Score</button>
+        <button id="playAgain">Play Again</button>
+    </div>
+    
+    <div id="instructions">
+        <p><strong>Controls:</strong> Space/Up = Jump | Right = Accelerate | Left = Brake | N = Night Mode | P = Pause</p>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Game variables
+        let bike = { 
+            x: 150, 
+            y: canvas.height - 100, 
+            width: 50, 
+            height: 30,
+            speed: 0, 
+            xSpeed: 2,
+            gravity: 0.5, 
+            jumpPower: -12,
+            onGround: true,
+            power: 0,
+            emoji: "🏍️",
+            angle: 0,
+            facingRight: true
+        };
+        
+        let keys = {
+            up: false,
+            right: false,
+            left: false,
+            space: false
+        };
+        
+        let game = {
+            hills: [],
+            boosters: [],
+            obstacles: [],
+            clouds: [],
+            birds: [],
+            distance: 0,
+            score: 0,
+            gameSpeed: 4,
+            nightMode: false,
+            gameOver: false,
+            paused: false,
+            finishLine: 5000,
+            leaderboard: loadLeaderboard()
+        };
+        
+        // Initialize game elements
+        function initGame() {
+            createHills();
+            createClouds();
+            createBirds();
+            createBoosters();
+            createObstacles();
+            updateUI();
+        }
+        
+        // Create terrain with hills that connect smoothly
+        function createHills() {
+            let lastHeight = canvas.height - 100;
+            let totalWidth = 0;
+            
+            while (totalWidth < canvas.width + 2000) {
+                let width = Math.random() * 200 + 100;
+                let height = lastHeight + (Math.random() * 100 - 50);
+                // Keep height within reasonable bounds
+                height = Math.max(canvas.height - 250, Math.min(height, canvas.height - 50));
+                
+                game.hills.push({ 
+                    x: totalWidth, 
+                    y: height, 
+                    width: width, 
+                    height: canvas.height - height,
+                    color: "#654321"
+                });
+                
+                lastHeight = height;
+                totalWidth += width;
+            }
+        }
+        
+        function createClouds() {
+            for (let i = 0; i < 10; i++) {
+                game.clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height / 2),
+                    speed: Math.random() * 0.5 + 0.1,
+                    size: Math.random() * 30 + 20
+                });
+            }
+        }
+        
+        function createBirds() {
+            for (let i = 0; i < 5; i++) {
+                game.birds.push({
+                    x: Math.random() * canvas.width + canvas.width,
+                    y: Math.random() * (canvas.height / 2),
+                    speed: Math.random() * 2 + 3,
+                    emoji: "🦅",
+                    frame: 0,
+                    frameCount: 0
+                });
+            }
+        }
+        
+        function createBoosters() {
+            for (let i = 0; i < 30; i++) {
+                let x = Math.random() * (game.finishLine - 500) + 500;
+                let hillIndex = getHillIndexAtPosition(x);
+                
+                if (hillIndex !== -1) {
+                    let hill = game.hills[hillIndex];
+                    let y = hill.y - 30; // 30px above the hill
+                    
+                    game.boosters.push({
+                        x: x,
+                        y: y,
+                        collected: false,
+                        type: Math.random() > 0.3 ? "⚡" : "🚀",
+                        value: Math.random() > 0.3 ? 10 : 25
+                    });
+                }
+            }
+        }
+        
+        function createObstacles() {
+            for (let i = 0; i < 20; i++) {
+                let x = Math.random() * (game.finishLine - 800) + 800;
+                let hillIndex = getHillIndexAtPosition(x);
+                
+                if (hillIndex !== -1) {
+                    let hill = game.hills[hillIndex];
+                    let y = hill.y - 20; // 20px above the hill
+                    
+                    game.obstacles.push({
+                        x: x,
+                        y: y,
+                        width: 30,
+                        height: 30,
+                        emoji: Math.random() > 0.5 ? "🪨" : "🌵"
+                    });
+                }
+            }
+        }
+        
+        // Get hill index at a specific position
+        function getHillIndexAtPosition(x) {
+            for (let i = 0; i < game.hills.length; i++) {
+                let hill = game.hills[i];
+                if (x >= hill.x && x < hill.x + hill.width) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        // Get hill Y position at a specific X position
+        function getHillYAtPosition(x) {
+            let hillIndex = getHillIndexAtPosition(x);
+            if (hillIndex !== -1) {
+                return game.hills[hillIndex].y;
+            }
+            return canvas.height - 100; // Default ground level
+        }
+        
+        // Draw game elements
+        function drawBackground() {
+            let skyColor = game.nightMode ? "#1a1a2e" : "#87CEEB";
+            let gradientColor = game.nightMode ? "#000b30" : "#e0f7ff";
+            
+            let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, gradientColor);
+            gradient.addColorStop(1, skyColor);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sun or moon
+            ctx.fillStyle = game.nightMode ? "#ffffff" : "#FFFF00";
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (game.nightMode) {
+                // Draw stars in night mode
+                ctx.fillStyle = "#FFFFFF";
+                for (let i = 0; i < 100; i++) {
+                    let x = (i * 37) % canvas.width;
+                    let y = (i * 41) % (canvas.height / 2);
+                    let size = (i % 3) + 1;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+            
+            // Draw clouds
+            ctx.fillStyle = game.nightMode ? "rgba(150, 150, 180, 0.7)" : "rgba(255, 255, 255, 0.8)";
+            game.clouds.forEach(cloud => {
+                drawCloud(cloud.x, cloud.y, cloud.size);
+            });
+            
+            // Draw birds
+            game.birds.forEach(bird => {
+                ctx.font = "20px Arial";
+                ctx.fillText(bird.emoji, bird.x, bird.y);
+            });
+            
+            // Draw finish line flag
+            let finishX = game.finishLine - game.distance;
+            if (finishX < canvas.width + 100 && finishX > -50) {
+                ctx.fillStyle = "#FF0000";
+                ctx.fillRect(finishX, 0, 10, canvas.height);
+                ctx.font = "30px Arial";
+                ctx.fillText("🏁", finishX - 5, 100);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "20px Arial";
+                ctx.fillText("FINISH", finishX - 25, 150);
+            }
+            
+            // Draw distance markers
+            for (let i = 1000; i < game.finishLine; i += 1000) {
+                let markerX = i - game.distance;
+                if (markerX > -50 && markerX < canvas.width + 50) {
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.font = "20px Arial";
+                    ctx.fillText(`${i}m`, markerX, 80);
+                    ctx.fillStyle = "#AAAAAA";
+                    ctx.fillRect(markerX, 90, 2, 50);
+                }
+            }
+        }
+        
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.8, y - size * 0.2, size * 0.8, 0, Math.PI * 2);
+            ctx.arc(x + size * 1.5, y, size, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.5, y + size * 0.4, size * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawHills() {
+            game.hills.forEach(hill => {
+                // Adjust hill position based on distance traveled
+                let adjustedX = hill.x - game.distance;
+                if (adjustedX < -hill.width || adjustedX > canvas.width) return;
+                
+                // Draw hill with gradient
+                let gradient = ctx.createLinearGradient(0, hill.y, 0, canvas.height);
+                let baseColor = hill.color;
+                let topColor = game.nightMode ? "#543911" : "#8B6914";
+                
+                gradient.addColorStop(0, topColor);
+                gradient.addColorStop(1, baseColor);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(adjustedX, canvas.height);
+                ctx.lineTo(adjustedX, hill.y);
+                ctx.lineTo(adjustedX + hill.width, hill.y);
+                ctx.lineTo(adjustedX + hill.width, canvas.height);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Draw grass on top of the hill
+                ctx.fillStyle = game.nightMode ? "#1a4d1a" : "#4CAF50";
+                ctx.beginPath();
+                ctx.moveTo(adjustedX, hill.y);
+                ctx.lineTo(adjustedX + hill.width, hill.y);
+                ctx.lineTo(adjustedX + hill.width, hill.y + 5);
+                ctx.lineTo(adjustedX, hill.y + 5);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        function drawBoosters() {
+            game.boosters.forEach(booster => {
+                if (booster.collected) return;
+                
+                let adjustedX = booster.x - game.distance;
+                if (adjustedX < -50 || adjustedX > canvas.width) return;
+                
+                ctx.font = "25px Arial";
+                ctx.fillText(booster.type, adjustedX, booster.y);
+                
+                // Draw glow effect
+                ctx.beginPath();
+                ctx.arc(adjustedX + 12, booster.y - 12, 15, 0, Math.PI * 2);
+                ctx.fillStyle = booster.type === "⚡" ? "rgba(255, 255, 0, 0.3)" : "rgba(255, 100, 0, 0.3)";
+                ctx.fill();
+            });
+        }
+        
+        function drawObstacles() {
+            game.obstacles.forEach(obstacle => {
+                let adjustedX = obstacle.x - game.distance;
+                if (adjustedX < -50 || adjustedX > canvas.width) return;
+                
+                ctx.font = "30px Arial";
+                ctx.fillText(obstacle.emoji, adjustedX, obstacle.y);
+            });
+        }
+        
+        function drawBike() {
+            // Calculate bike angle based on terrain
+            let hillY = getHillYAtPosition(bike.x + game.distance);
+            let nextHillY = getHillYAtPosition(bike.x + 10 + game.distance);
+            bike.angle = Math.atan2(hillY - nextHillY, 10);
+            
+            ctx.save();
+            ctx.translate(bike.x, bike.y);
+            
+            // Apply terrain angle
+            ctx.rotate(bike.angle);
+            
+            // Apply horizontal flip if facing left (away from finish line)
+            if (!bike.facingRight) {
+                ctx.scale(-1, 1);
+            }
+            
+            // Draw bike with flame effect when powered up
+            ctx.font = "50px Arial";
+            ctx.fillText(bike.emoji, 0, 0);
+            
+            if (bike.power > 0) {
+                // Flame appears opposite the direction of travel
+                ctx.font = "30px Arial";
+                ctx.fillText("🔥", bike.facingRight ? -30 : 30, 0);
+            }
+            
+            ctx.restore();
+            
+            // Draw power meter
+            if (bike.power > 0) {
+                ctx.fillStyle = "rgba(255, 165, 0, 0.7)";
+                ctx.fillRect(bike.x - 25, bike.y - 60, (bike.power / 100) * 50, 5);
+                ctx.strokeStyle = "#000";
+                ctx.strokeRect(bike.x - 25, bike.y - 60, 50, 5);
+            }
+        }
+        
+        // Update game state
+        function updateGame() {
+            if (game.gameOver || game.paused) return;
+            
+            // Update bike position
+            let groundY = getHillYAtPosition(bike.x + game.distance);
+            bike.onGround = bike.y >= groundY - 10;
+            
+            if (bike.onGround) {
+                bike.y = groundY;
+                bike.speed = 0;
+            } else {
+                bike.speed += bike.gravity;
+                bike.y += bike.speed;
+            }
+            
+            // Handle keyboard controls
+            let currentSpeed = game.gameSpeed;
+            
+            // Apply acceleration
+            if (keys.right) {
+                currentSpeed = Math.min(currentSpeed + 0.1, 8);
+                bike.facingRight = true;
+            }
+            
+            // Apply braking
+            if (keys.left) {
+                currentSpeed = Math.max(currentSpeed - 0.2, 1);
+                // Only change direction when on the ground and moving slowly
+                if (bike.onGround && currentSpeed < 3) {
+                    bike.facingRight = false;
+                }
+            }
+            
+            // Apply jumping
+            if ((keys.up || keys.space) && bike.onGround) {
+                bike.speed = bike.jumpPower;
+                bike.onGround = false;
+            }
+            
+            // Apply power boost
+            if (bike.power > 0) {
+                currentSpeed += 3;
+                bike.power -= 0.5;
+                
+                // Always face forward when boosting
+                bike.facingRight = true;
+            }
+            
+            game.gameSpeed = currentSpeed;
+            
+            // Update distance
+            game.distance += currentSpeed;
+            
+            // Check for booster collection
+            game.boosters.forEach(booster => {
+                if (!booster.collected && isColliding(bike, {
+                    x: booster.x - game.distance,
+                    y: booster.y - 20,
+                    width: 30,
+                    height: 30
+                })) {
+                    booster.collected = true;
+                    bike.power += booster.value;
+                    game.score += booster.value * 5;
+                    playSound(booster.type === "⚡" ? "power" : "rocket");
+                }
+            });
+            
+            // Check for obstacle collision
+            game.obstacles.forEach(obstacle => {
+                let adjustedX = obstacle.x - game.distance;
+                
+                if (adjustedX >= -50 && adjustedX <= canvas.width + 50 &&
+                    isColliding(bike, {
+                        x: adjustedX,
+                        y: obstacle.y - 25,
+                        width: 30,
+                        height: 30
+                    })) {
+                    if (bike.power > 30) {
+                        // Destroy obstacle with power
+                        obstacle.x = -1000;
+                        bike.power -= 30;
+                        game.score += 50;
+                        playSound("crash");
+                    } else {
+                        // Game over on collision
+                        setGameOver();
+                        playSound("crash");
+                    }
+                }
+            });
+            
+            // Update clouds
+            game.clouds.forEach(cloud => {
+                cloud.x -= cloud.speed;
+                if (cloud.x < -cloud.size * 3) {
+                    cloud.x = canvas.width + cloud.size;
+                    cloud.y = Math.random() * (canvas.height / 2);
+                }
+            });
+            
+            // Update birds
+            game.birds.forEach(bird => {
+                bird.x -= bird.speed;
+                bird.frameCount++;
+                
+                if (bird.frameCount > 10) {
+                    bird.frame = (bird.frame + 1) % 2;
+                    bird.frameCount = 0;
+                    bird.emoji = bird.frame === 0 ? "🦅" : "🦢";
+                }
+                
+                if (bird.x < -50) {
+                    bird.x = canvas.width + Math.random() * 500;
+                    bird.y = Math.random() * (canvas.height / 2);
+                }
+            });
+            
+            // Add new hills as needed
+            if (game.hills[game.hills.length - 1].x - game.distance < canvas.width + 1000) {
+                let lastHill = game.hills[game.hills.length - 1];
+                let width = Math.random() * 200 + 100;
+                let height = lastHill.y + (Math.random() * 100 - 50);
+                height = Math.max(canvas.height - 250, Math.min(height, canvas.height - 50));
+                
+                game.hills.push({
+                    x: lastHill.x + lastHill.width,
+                    y: height,
+                    width: width,
+                    height: canvas.height - height,
+                    color: "#654321"
+                });
+            }
+            
+            // Check for finish line
+            if (game.distance >= game.finishLine) {
+                game.score += 1000;
+                setGameOver(true);
+            }
+            
+            // Update score and UI
+            game.score += 0.1;
+            updateUI();
+        }
+        
+        function updateUI() {
+            document.getElementById("score").textContent = Math.floor(game.score);
+            document.getElementById("distance").textContent = Math.floor(game.distance);
+            document.getElementById("power").textContent = Math.floor(bike.power);
+            document.getElementById("speedDisplay").textContent = Math.floor(game.gameSpeed * 10);
+            document.getElementById("finalScore").textContent = Math.floor(game.score);
+        }
+        
+        function isColliding(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function setGameOver(victory = false) {
+            game.gameOver = true;
+            document.getElementById("gameOver").style.display = "block";
+            
+            if (victory) {
+                document.getElementById("gameOver").querySelector("h2").textContent = "🏆 Victory! 🏆";
+            }
+            
+            updateLeaderboard();
+        }
+        
+        function loadLeaderboard() {
+            const saved = localStorage.getItem("bikeGameLeaderboard");
+            return saved ? JSON.parse(saved) : [];
+        }
+        
+        function saveLeaderboard() {
+            localStorage.setItem("bikeGameLeaderboard", JSON.stringify(game.leaderboard));
+        }
+        
+        function updateLeaderboard() {
+            const leaderboardElement = document.getElementById("leaderboardList");
+            leaderboardElement.innerHTML = "";
+            
+            game.leaderboard.sort((a, b) => b.score - a.score).slice(0, 5).forEach(entry => {
+                const li = document.createElement("li");
+                li.textContent = `${entry.name}: ${Math.floor(entry.score)}`;
+                leaderboardElement.appendChild(li);
+            });
+            
+            document.getElementById("leaderboard").style.display = "block";
+        }
+        
+        function playSound(type) {
+            // You can implement actual sounds here if needed
+        }
+        
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawHills();
+            drawBoosters();
+            drawObstacles();
+            drawBike();
+            updateGame();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Event Listeners for better control handling
+        document.addEventListener("keydown", event => {
+            if (game.gameOver) return;
+            
+            switch (event.code) {
+                case "Space":
+                    keys.space = true;
+                    break;
+                case "ArrowUp":
+                    keys.up = true;
+                    break;
+                case "ArrowRight":
+                    keys.right = true;
+                    break;
+                case "ArrowLeft":
+                    keys.left = true;
+                    break;
+                case "KeyN":
+                    game.nightMode = !game.nightMode;
+                    break;
+                case "KeyP":
+                    game.paused = !game.paused;
+                    break;
+            }
+        });
+        
+        document.addEventListener("keyup", event => {
+            switch (event.code) {
+                case "Space":
+                    keys.space = false;
+                    break;
+                case "ArrowUp":
+                    keys.up = false;
+                    break;
+                case "ArrowRight":
+                    keys.right = false;
+                    break;
+                case "ArrowLeft":
+                    keys.left = false;
+                    break;
+            }
+        });
+        
+        // Mobile controls
+        canvas.addEventListener("touchstart", event => {
+            const touch = event.touches[0];
+            const x = touch.clientX;
+            
+            if (x < canvas.width / 3) {
+                keys.left = true;
+            } else if (x > (canvas.width / 3) * 2) {
+                keys.right = true;
+            } else {
+                keys.up = true;
+            }
+            
+            event.preventDefault();
+        });
+        
+        canvas.addEventListener("touchend", event => {
+            keys.left = false;
+            keys.right = false;
+            keys.up = false;
+            event.preventDefault();
+        });
+        
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        document.getElementById("submitScore").addEventListener("click", () => {
+            const name = document.getElementById("playerName").value || "Player";
+            game.leaderboard.push({
+                name: name,
+                score: game.score
+            });
+            saveLeaderboard();
+            updateLeaderboard();
+            document.getElementById("submitScore").disabled = true;
+        });
+        
+        document.getElementById("playAgain").addEventListener("click", () => {
+            location.reload();
+        });
+        
+        // Initialize and start game
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

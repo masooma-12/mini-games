@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street Fighter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Impact', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            margin: 20px auto;
+            border: 4px solid #555;
+            overflow: hidden;
+        }
+        
+        #street {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to bottom, #333 0%, #444 100%);
+            border-top: 2px solid #555;
+        }
+        
+        .crowd-container {
+            position: absolute;
+            bottom: 150px;
+            width: 100%;
+            height: 80px;
+            overflow: hidden;
+        }
+        
+        .crowd {
+            position: absolute;
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            bottom: 0;
+            font-size: 20px;
+            animation: wave 2s infinite;
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .buildings {
+            position: absolute;
+            bottom: 230px;
+            width: 100%;
+            height: 220px;
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .building {
+            background: #222;
+            height: 100%;
+            width: 80px;
+            position: relative;
+        }
+        
+        .building:nth-child(odd) {
+            height: 85%;
+        }
+        
+        .building:nth-child(even) {
+            height: 70%;
+        }
+        
+        .window {
+            position: absolute;
+            width: 10px;
+            height: 15px;
+            background: #ffff00;
+            opacity: 0.7;
+        }
+        
+        .player {
+            position: absolute;
+            bottom: 150px;
+            width: 60px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.1s;
+        }
+        
+        #player1 {
+            left: 200px;
+            color: #ff4444;
+        }
+        
+        #player2 {
+            right: 200px;
+            color: #4444ff;
+            transform: scaleX(-1);
+        }
+        
+        .head {
+            font-size: 30px;
+            margin-bottom: -10px;
+        }
+        
+        .body {
+            font-size: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .legs {
+            font-size: 20px;
+            letter-spacing: -5px;
+        }
+        
+        .health-container {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 50px;
+        }
+        
+        .health-bar {
+            width: 300px;
+            height: 30px;
+            background-color: #333;
+            border: 2px solid #fff;
+        }
+        
+        .health-level {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s;
+        }
+        
+        #p1-health {
+            background-color: #ff4444;
+        }
+        
+        #p2-health {
+            background-color: #4444ff;
+        }
+        
+        .player-name {
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 2px 2px #000;
+        }
+        
+        #round-info {
+            position: absolute;
+            top: 70px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 2px 2px #000;
+        }
+        
+        #game-message {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            transform: translateY(-50%);
+            text-align: center;
+            font-size: 120px;
+            color: red;
+            text-shadow: 4px 4px #000;
+            display: none;
+            font-family: 'Impact', fantasy;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translateY(-50%) scale(1); }
+            50% { transform: translateY(-50%) scale(1.1); }
+        }
+        
+        #menu-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .menu-title {
+            font-size: 60px;
+            color: red;
+            margin-bottom: 40px;
+            text-shadow: 3px 3px #000;
+        }
+        
+        .menu-option {
+            width: 300px;
+            padding: 15px;
+            margin: 10px;
+            background-color: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .menu-option:hover {
+            background-color: #555;
+        }
+        
+        .input-group {
+            margin: 10px 0;
+            width: 300px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        label {
+            color: #fff;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .menu-rounds {
+            display: flex;
+            justify-content: space-around;
+            width: 300px;
+            margin: 10px 0;
+        }
+        
+        .round-option {
+            padding: 10px 15px;
+            background-color: #333;
+            border: 2px solid #555;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .round-option.selected {
+            background-color: red;
+        }
+        
+        #history-container {
+            width: 800px;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: #333;
+            border: 2px solid #555;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .history-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #444;
+        }
+        
+        #controls-info {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: #ccc;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="buildings" id="buildings">
+            <!-- Buildings will be generated by JS -->
+        </div>
+        <div class="crowd-container">
+            <div class="crowd" id="crowd">
+                <!-- Crowd will be generated by JS -->
+            </div>
+        </div>
+        <div id="street"></div>
+        
+        <div class="health-container">
+            <div>
+                <div class="player-name" id="p1-name">Player 1</div>
+                <div class="health-bar">
+                    <div class="health-level" id="p1-health"></div>
+                </div>
+            </div>
+            <div>
+                <div class="player-name" id="p2-name">Player 2</div>
+                <div class="health-bar">
+                    <div class="health-level" id="p2-health"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="round-info">Round 1</div>
+        
+        <div id="player1" class="player">
+            <div class="head">👨</div>
+            <div class="body">👕</div>
+            <div class="legs">👖</div>
+        </div>
+        
+        <div id="player2" class="player">
+            <div class="head">👨</div>
+            <div class="body">👕</div>
+            <div class="legs">👖</div>
+        </div>
+        
+        <div id="game-message">K.O.</div>
+        
+        <div id="menu-container">
+            <h1 class="menu-title">STREET FIGHTER</h1>
+            
+            <div class="input-group">
+                <label for="p1-name-input">Player 1 Name:</label>
+                <input type="text" id="p1-name-input" value="Fighter 1">
+            </div>
+            
+            <div class="input-group">
+                <label for="p2-name-input">Player 2 Name:</label>
+                <input type="text" id="p2-name-input" value="Fighter 2">
+            </div>
+            
+            <div class="input-group">
+                <label>Number of Rounds:</label>
+                <div class="menu-rounds">
+                    <div class="round-option selected" data-rounds="1">1</div>
+                    <div class="round-option" data-rounds="3">3</div>
+                    <div class="round-option" data-rounds="5">5</div>
+                    <div class="round-option" data-rounds="7">7</div>
+                </div>
+            </div>
+            
+            <div class="menu-option" id="play-multi">Play Multiplayer</div>
+            <div class="menu-option" id="play-ai">Play vs AI</div>
+        </div>
+        
+        <div id="controls-info">
+            Player 1: A/D to move, W to jump, S to duck, Q to punch, E to kick<br>
+            Player 2: ←/→ to move, ↑ to jump, ↓ to duck, , to punch, . to kick
+        </div>
+    </div>
+    
+    <div id="history-container">
+        <h3>Match History</h3>
+        <div id="history-list"></div>
+    </div>
+    
+    <script>
+        // Game state
+        const gameState = {
+            isPlaying: false,
+            gameMode: null, // 'ai' or 'multi'
+            totalRounds: 1,
+            currentRound: 1,
+            roundsWon: { p1: 0, p2: 0 },
+            players: {
+                p1: {
+                    name: 'Fighter 1',
+                    health: 100,
+                    x: 200,
+                    y: 0,
+                    isJumping: false,
+                    isDucking: false,
+                    isPunching: false,
+                    isKicking: false,
+                    isHit: false,
+                    jumpHeight: 0,
+                    direction: 1,
+                    combo: 0,
+                    specialMeter: 0
+                },
+                p2: {
+                    name: 'Fighter 2',
+                    health: 100,
+                    x: 540,
+                    y: 0,
+                    isJumping: false,
+                    isDucking: false,
+                    isPunching: false,
+                    isKicking: false,
+                    isHit: false,
+                    jumpHeight: 0,
+                    direction: -1,
+                    combo: 0,
+                    specialMeter: 0
+                }
+            },
+            keys: {
+                p1: {
+                    left: false,
+                    right: false,
+                    up: false,
+                    down: false,
+                    punch: false,
+                    kick: false,
+                    special: false
+                },
+                p2: {
+                    left: false,
+                    right: false,
+                    up: false,
+                    down: false,
+                    punch: false,
+                    kick: false,
+                    special: false
+                }
+            },
+            matchHistory: [],
+            streetScenes: [
+                '🏙️', '🌆', '🌃', '🏙️', '🌆', '🌃'
+            ],
+            crowdEmojis: ['👨', '👩', '👧', '👦', '👵', '👴', '🧑', '👱', '👲', '🧓']
+        };
+        
+        // DOM elements
+        const player1 = document.getElementById('player1');
+        const player2 = document.getElementById('player2');
+        const p1Health = document.getElementById('p1-health');
+        const p2Health = document.getElementById('p2-health');
+        const p1NameDisplay = document.getElementById('p1-name');
+        const p2NameDisplay = document.getElementById('p2-name');
+        const roundInfo = document.getElementById('round-info');
+        const gameMessage = document.getElementById('game-message');
+        const menuContainer = document.getElementById('menu-container');
+        const playMulti = document.getElementById('play-multi');
+        const playAI = document.getElementById('play-ai');
+        const p1NameInput = document.getElementById('p1-name-input');
+        const p2NameInput = document.getElementById('p2-name-input');
+        const roundOptions = document.querySelectorAll('.round-option');
+        const historyContainer = document.getElementById('history-container');
+        const historyList = document.getElementById('history-list');
+        const buildings = document.getElementById('buildings');
+        const crowd = document.getElementById('crowd');
+        
+        // Initialize the game
+        function initGame() {
+            // Create buildings
+            createBuildings();
+            
+            // Create crowd
+            createCrowd();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Set health bars
+            updateHealthBars();
+        }
+        
+        function createBuildings() {
+            buildings.innerHTML = '';
+            const numBuildings = 10;
+            
+            for (let i = 0; i < numBuildings; i++) {
+                const building = document.createElement('div');
+                building.className = 'building';
+                
+                // Add random windows
+                const numWindows = Math.floor(Math.random() * 20) + 5;
+                for (let j = 0; j < numWindows; j++) {
+                    const window = document.createElement('div');
+                    window.className = 'window';
+                    window.style.left = `${Math.random() * 70}px`;
+                    window.style.top = `${Math.random() * 200}px`;
+                    building.appendChild(window);
+                }
+                
+                buildings.appendChild(building);
+            }
+        }
+        
+        function createCrowd() {
+            crowd.innerHTML = '';
+            const numPeople = 30;
+            
+            for (let i = 0; i < numPeople; i++) {
+                const person = document.createElement('div');
+                person.className = 'person';
+                person.textContent = gameState.crowdEmojis[Math.floor(Math.random() * gameState.crowdEmojis.length)];
+                person.style.animationDelay = `${Math.random() * 2}s`;
+                crowd.appendChild(person);
+            }
+        }
+        
+        function setupEventListeners() {
+            // Menu options
+            playMulti.addEventListener('click', () => startGame('multi'));
+            playAI.addEventListener('click', () => startGame('ai'));
+            
+            // Round selection
+            roundOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    roundOptions.forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    gameState.totalRounds = parseInt(option.getAttribute('data-rounds'));
+                });
+            });
+            
+            // Keyboard events
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+        
+        function handleKeyDown(e) {
+            if (!gameState.isPlaying) return;
+            
+            // Player 1 controls (WASD + Q/E)
+            if (e.key === 'a') gameState.keys.p1.left = true;
+            if (e.key === 'd') gameState.keys.p1.right = true;
+            if (e.key === 'w') gameState.keys.p1.up = true;
+            if (e.key === 's') gameState.keys.p1.down = true;
+            if (e.key === 'q') gameState.keys.p1.punch = true;
+            if (e.key === 'e') gameState.keys.p1.kick = true;
+            if (e.key === 'z') gameState.keys.p1.special = true;
+            
+            // Player 2 controls (Arrow keys + ,/.)
+            if (e.key === 'ArrowLeft') gameState.keys.p2.left = true;
+            if (e.key === 'ArrowRight') gameState.keys.p2.right = true;
+            if (e.key === 'ArrowUp') gameState.keys.p2.up = true;
+            if (e.key === 'ArrowDown') gameState.keys.p2.down = true;
+            if (e.key === ',') gameState.keys.p2.punch = true;
+            if (e.key === '.') gameState.keys.p2.kick = true;
+            if (e.key === '/') gameState.keys.p2.special = true;
+        }
+        
+        function handleKeyUp(e) {
+            // Player 1 controls (WASD + Q/E)
+            if (e.key === 'a') gameState.keys.p1.left = false;
+            if (e.key === 'd') gameState.keys.p1.right = false;
+            if (e.key === 'w') gameState.keys.p1.up = false;
+            if (e.key === 's') gameState.keys.p1.down = false;
+            if (e.key === 'q') gameState.keys.p1.punch = false;
+            if (e.key === 'e') gameState.keys.p1.kick = false;
+            if (e.key === 'z') gameState.keys.p1.special = false;
+            
+            // Player 2 controls (Arrow keys + ,/.)
+            if (e.key === 'ArrowLeft') gameState.keys.p2.left = false;
+            if (e.key === 'ArrowRight') gameState.keys.p2.right = false;
+            if (e.key === 'ArrowUp') gameState.keys.p2.up = false;
+            if (e.key === 'ArrowDown') gameState.keys.p2.down = false;
+            if (e.key === ',') gameState.keys.p2.punch = false;
+            if (e.key === '.') gameState.keys.p2.kick = false;
+            if (e.key === '/') gameState.keys.p2.special = false;
+        }
+        
+        function startGame(mode) {
+            // Set game mode
+            gameState.gameMode = mode;
+            
+            // Get player names
+            gameState.players.p1.name = p1NameInput.value || 'Fighter 1';
+            gameState.players.p2.name = p2NameInput.value || 'Fighter 2';
+            
+            // Update name displays
+            p1NameDisplay.textContent = gameState.players.p1.name;
+            p2NameDisplay.textContent = gameState.players.p2.name;
+            
+            // Reset player positions and health
+            resetRound();
+            
+            // Hide menu
+            menuContainer.style.display = 'none';
+            
+            // Show history
+            historyContainer.style.display = 'block';
+            
+            // Start game loop
+            gameState.isPlaying = true;
+            gameLoop();
+        }
+        
+        function resetRound() {
+            // Reset player health
+            gameState.players.p1.health = 100;
+            gameState.players.p2.health = 100;
+            
+            // Reset positions
+            gameState.players.p1.x = 200;
+            gameState.players.p2.x = 540;
+            
+            // Reset states
+            gameState.players.p1.isJumping = false;
+            gameState.players.p1.isDucking = false;
+            gameState.players.p1.isPunching = false;
+            gameState.players.p1.isKicking = false;
+            gameState.players.p1.isHit = false;
+            gameState.players.p1.jumpHeight = 0;
+            gameState.players.p1.combo = 0;
+            gameState.players.p1.specialMeter = 0;
+            
+            gameState.players.p2.isJumping = false;
+            gameState.players.p2.isDucking = false;
+            gameState.players.p2.isPunching = false;
+            gameState.players.p2.isKicking = false;
+            gameState.players.p2.isHit = false;
+            gameState.players.p2.jumpHeight = 0;
+            gameState.players.p2.combo = 0;
+            gameState.players.p2.specialMeter = 0;
+            
+            // Update health bars
+            updateHealthBars();
+            
+            // Update round info
+            roundInfo.textContent = `Round ${gameState.currentRound}`;
+            
+            // Hide game message
+            gameMessage.style.display = 'none';
+            
+            // Create new street scene
+            createBuildings();
+            createCrowd();
+        }
+        
+        function updateHealthBars() {
+            p1Health.style.width = `${gameState.players.p1.health}%`;
+            p2Health.style.width = `${gameState.players.p2.health}%`;
+        }
+        
+        function gameLoop() {
+            if (!gameState.isPlaying) return;
+            
+            // Handle AI if in AI mode
+            if (gameState.gameMode === 'ai') {
+                handleAI();
+            }
+            
+            // Update player 1
+            updatePlayer('p1');
+            
+            // Update player 2
+            updatePlayer('p2');
+            
+            // Check for collisions
+            checkCollisions();
+            
+            // Update positions
+            updatePositions();
+            
+            // Check for round end
+            checkRoundEnd();
+            
+            // Continue the game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function handleAI() {
+            // Simple AI for player 2
+            const p1 = gameState.players.p1;
+            const p2 = gameState.players.p2;
+            
+            // Reset AI actions
+            gameState.keys.p2.left = false;
+            gameState.keys.p2.right = false;
+            gameState.keys.p2.up = false;
+            gameState.keys.p2.down = false;
+            gameState.keys.p2.punch = false;
+            gameState.keys.p2.kick = false;
+            gameState.keys.p2.special = false;
+            
+            // Calculate distance to player 1
+            const distance = Math.abs(p1.x - p2.x);
+            
+            // AI logic
+            if (distance > 100) {
+                // Move toward player 1
+                if (p2.x > p1.x) {
+                    gameState.keys.p2.left = true;
+                } else {
+                    gameState.keys.p2.right = true;
+                }
+            } else if (distance < 70) {
+                // Move away from player 1
+                if (p2.x > p1.x) {
+                    gameState.keys.p2.right = true;
+                } else {
+                    gameState.keys.p2.left = true;
+                }
+            } else {
+                // Within attack range, decide on an action
+                const action = Math.random();
+                
+                if (action < 0.2) {
+                    gameState.keys.p2.punch = true;
+                } else if (action < 0.4) {
+                    gameState.keys.p2.kick = true;
+                } else if (action < 0.6) {
+                    gameState.keys.p2.up = true;
+                } else if (action < 0.8) {
+                    gameState.keys.p2.down = true;
+                } else if (p2.specialMeter >= 100) {
+                    gameState.keys.p2.special = true;
+                }
+            }
+            
+            // Random dodge
+            if (p1.isPunching || p1.isKicking) {
+                if (Math.random() < 0.4) {
+                    if (Math.random() < 0.5) {
+                        gameState.keys.p2.up = true;
+                    } else {
+                        gameState.keys.p2.down = true;
+                    }
+                }
+            }
+        }
+        
+        function updatePlayer(playerKey) {
+            const player = gameState.players[playerKey];
+            const keys = gameState.keys[playerKey];
+            const elem = playerKey === 'p1' ? player1 : player2;
+            const head = elem.querySelector('.head');
+            const body = elem.querySelector('.body');
+            const legs = elem.querySelector('.legs');
+            
+            // Handle jumping
+            if (keys.up && !player.isJumping && !player.isDucking) {
+                player.isJumping = true;
+                player.jumpHeight = 0;
+            }
+            
+            if (player.isJumping) {
+                player.jumpHeight += 1;
+                player.y = -Math.sin(player.jumpHeight * 0.1) * 100;
+                
+                if (player.jumpHeight > 30) {
+                    player.isJumping = false;
+                    player.y = 0;
+                }
+            }
+            
+            // Handle ducking
+            player.isDucking = keys.down && !player.isJumping;
+            
+            // Handle attacks
+            if (keys.punch && !player.isPunching && !player.isKicking) {
+                player.isPunching = true;
+                player.combo++;
+                setTimeout(() => { player.isPunching = false; }, 300);
+            }
+            
+            if (keys.kick && !player.isKicking && !player.isPunching) {
+                player.isKicking = true;
+                player.combo++;
+                setTimeout(() => { player.isKicking = false; }, 400);
+            }
+            
+            // Handle special move
+            if (keys.special && player.specialMeter >= 100) {
+                player.specialMeter = 0;
+                player.isPunching = true;
+                player.combo += 3;
+                setTimeout(() => { player.isPunching = false; }, 500);
+            }
+            
+            // Handle movement
+            if (keys.left && !player.isDucking) {
+                player.x -= 5;
+                player.direction = playerKey === 'p1' ? -1 : 1;
+            }
+            
+            if (keys.right && !player.isDucking) {
+                player.x += 5;
+                player.direction = playerKey === 'p1' ? 1 : -1;
+            }
+            
+            // Keep player within bounds
+            if (player.x < 50) player.x = 50;
+            if (player.x > 740) player.x = 740;
+            
+            // Update player appearance
+            if (player.isHit) {
+                head.textContent = '😵';
+            } else if (player.isDucking) {
+                head.textContent = '🙇';
+                body.textContent = '👕';
+                legs.textContent = '👖';
+            } else if (player.isPunching) {
+                head.textContent = '😠';
+                body.textContent = '👊';
+            } else if (player.isKicking) {
+                head.textContent = '😠';
+                body.textContent = '👕';
+                legs.textContent = '🦵';
+            } else if (player.isJumping) {
+                head.textContent = '😮';
+                body.textContent = '👕';
+                legs.textContent = '👟';
+            } else {
+                head.textContent = '👨';
+                body.textContent = '👕';
+                legs.textContent = '👖';
+            }
+            
+            // Apply direction
+            if ((playerKey === 'p1' && player.direction === -1) || (playerKey === 'p2' && player.direction === 1)) {
+                elem.style.transform = 'scaleX(-1)';
+            } else {
+                elem.style.transform = 'scaleX(1)';
+            }
+        }
+        
+        function updatePositions() {
+            player1.style.left = `${gameState.players.p1.x}px`;
+            player1.style.bottom = `${150 + gameState.players.p1.y}px`;
+            
+            player2.style.left = `${gameState.players.p2.x}px`;
+            player2.style.bottom = `${150 + gameState.players.p2.y}px`;
+        }
+        
+        function checkCollisions() {
+            const p1 = gameState.players.p1;
+            const p2 = gameState.players.p2;
+            const distance = Math.abs(p1.x - p2.x);
+            
+            // Check if players are close enough to hit
+            if (distance < 80) {
+                // Player 1 attacks Player 2
+                if (p1.isPunching && !p2.isDucking && !p2.isJumping) {
+                    p2.health -= 5 + p1.combo;
+                    p2.isHit = true;
+                    p1.specialMeter += 10;
+                    setTimeout(() => { p2.isHit = false; }, 200);
+                }
+                
+                if (p1.isKicking && !p2.isJumping) {
+                    if (p2.isDucking) {
+                        p2.health -= 3 + p1.combo; // Less damage if ducking
+                    } else {
+                        p2.health -= 8 + p1.combo;
+                    }
+                    p2.isHit = true;
+                    p1.specialMeter += 15;
+                    setTimeout(() => { p2.isHit = false; }, 200);
+                }
+                
+                // Player 2 attacks Player 1
+                if (p2.isPunching && !p1.isDucking && !p1.isJumping) {
+                    p1.health -= 5 + p2.combo;
+                    p1.isHit = true;
+                    p2.specialMeter += 10;
+                    setTimeout(() => { p1.isHit = false; }, 200);
+                }
+                
+                if (p2.isKicking && !p1.isJumping) {
+                    if (p1.isDucking) {
+                        p1.health -= 3 + p2.combo; // Less damage if ducking
+                    } else {
+                        p1.health -= 8 + p2.combo;
+                    }
+                    p1.isHit = true;
+                    p2.specialMeter += 15;
+                    setTimeout(() => { p1.isHit = false; }, 200);
+                }
+                
+                // Ensure health doesn't go below 0
+                if (p1.health < 0) p1.health = 0;
+                if (p2.health < 0) p2.health = 0;
+                
+                // Update health bars
+                updateHealthBars();
+            }
+        }
+        
+        function checkRoundEnd() {
+            const p1 = gameState.players.p1;
+            const p2 = gameState.players.p2;
+            
+            if (p1.health <= 0 || p2.health <= 0) {
+                // Determine winner
+                const winner = p1.health <= 0 ? 'p2' : 'p1';
+                
+                // Update rounds won
+                gameState.roundsWon[winner]++;
+                
+                // Show KO message
+                gameMessage.style.display = 'block';
+                setTimeout(() => {
+                    gameMessage.style.display = 'none';
+                    
+                    // Check if match is over
+                    if (gameState.roundsWon[winner] >= Math.ceil(gameState.totalRounds / 2)) {
+                        endMatch(winner);
+                    } else {
+                        // Start next round
+                        gameState.currentRound++;
+                        resetRound();
+                    }
+                }, 2000);
+            }
+        }
+        
+        function endMatch(winner) {
+            gameState.isPlaying = false;
+            gameMessage.textContent = `${gameState.players[winner].name} Wins! 🏆`;
+            gameMessage.style.display = 'block';
+            
+            // Add to match history
+            const entry = document.createElement('div');
+            entry.className = 'history-entry';
+            entry.textContent = `${gameState.players[winner].name} won in ${gameState.currentRound} rounds!`;
+            historyList.appendChild(entry);
+            
+            // Show menu after 3 seconds
+            setTimeout(() => {
+                menuContainer.style.display = 'flex';
+                gameState.currentRound = 1;
+                gameState.roundsWon = { p1: 0, p2: 0 };
+            }, 3000);
+        }
+        
+        // Initialize the game
+        initGame();
+    </script>
+</body>
+</html>

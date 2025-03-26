@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Multiplayer Snake Game 🐍</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: #111;
+            border: 4px solid #333;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        .hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .leaderboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #fff;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .leaderboard h2 {
+            margin-bottom: 10px;
+        }
+
+        .leaderboard ol {
+            list-style: none;
+            padding: 0;
+        }
+
+        .leaderboard li {
+            margin-bottom: 5px;
+        }
+
+        .chat {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .chat h2 {
+            margin-bottom: 10px;
+        }
+
+        .chat-messages {
+            height: 100px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 5px;
+            border: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+        </div>
+        <div class="leaderboard">
+            <h2>Leaderboard 🏆</h2>
+            <ol id="leaderboardList"></ol>
+        </div>
+        <div class="chat">
+            <h2>Chat 💬</h2>
+            <div class="chat-messages" id="chatMessages"></div>
+            <input type="text" class="chat-input" id="chatInput" placeholder="Type a message...">
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+
+        const socket = io(); // Connect to the server
+
+        // Game variables
+        let player, food, players, gameOver;
+
+        // Initialize game
+        function initGame() {
+            player = { x: 400, y: 300, size: 20, dx: 0, dy: 0, tail: [], score: 0, emoji: '🐍' };
+            food = { x: 0, y: 0, size: 20, emoji: '🔴' };
+            players = {};
+            gameOver = false;
+            spawnFood();
+        }
+
+        // Spawn food
+        function spawnFood() {
+            food.x = Math.floor(Math.random() * (canvas.width / 20)) * 20;
+            food.y = Math.floor(Math.random() * (canvas.height / 20)) * 20;
+        }
+
+        // Update game state
+        function update() {
+            if (gameOver) return;
+
+            // Move player
+            player.x += player.dx;
+            player.y += player.dy;
+
+            // Wrap around screen
+            if (player.x < 0) player.x = canvas.width;
+            if (player.x > canvas.width) player.x = 0;
+            if (player.y < 0) player.y = canvas.height;
+            if (player.y > canvas.height) player.y = 0;
+
+            // Check collision with food
+            if (player.x === food.x && player.y === food.y) {
+                player.tail.push({ x: player.x, y: player.y }); // Add a new segment to the tail
+                player.score += 10;
+                scoreDisplay.textContent = player.score;
+                spawnFood();
+                socket.emit('eatFood', { x: food.x, y: food.y });
+            }
+
+            // Update tail
+            if (player.tail.length > 0) {
+                player.tail.unshift({ x: player.x, y: player.y }); // Move the head to the front of the tail
+                player.tail.pop(); // Remove the last segment of the tail
+            }
+
+            // Check collision with other players
+            for (const id in players) {
+                if (id !== socket.id) {
+                    const otherPlayer = players[id];
+                    if (player.x === otherPlayer.x && player.y === otherPlayer.y) {
+                        gameOver = true;
+                        socket.emit('gameOver', { score: player.score });
+                    }
+                }
+            }
+
+            // Send player data to server
+            socket.emit('updatePlayer', player);
+        }
+
+        // Draw game
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw food
+            ctx.font = `${food.size}px Arial`;
+            ctx.fillStyle = '#ff0000';
+            ctx.fillText(food.emoji, food.x, food.y + food.size);
+
+            // Draw player
+            ctx.font = `${player.size}px Arial`;
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(player.emoji, player.x, player.y + player.size);
+            player.tail.forEach(segment => {
+                ctx.fillText(player.emoji, segment.x, segment.y + player.size);
+            });
+
+            // Draw other players
+            for (const id in players) {
+                if (id !== socket.id) {
+                    const otherPlayer = players[id];
+                    ctx.font = `${otherPlayer.size}px Arial`;
+                    ctx.fillStyle = '#0000ff';
+                    ctx.fillText(otherPlayer.emoji, otherPlayer.x, otherPlayer.y + otherPlayer.size);
+                    otherPlayer.tail.forEach(segment => {
+                        ctx.fillText(otherPlayer.emoji, segment.x, segment.y + otherPlayer.size);
+                    });
+                }
+            }
+        }
+
+        // Handle keyboard input
+        window.addEventListener('keydown', e => {
+            if (e.code === 'ArrowUp' && player.dy === 0) {
+                player.dx = 0;
+                player.dy = -20;
+            }
+            if (e.code === 'ArrowDown' && player.dy === 0) {
+                player.dx = 0;
+                player.dy = 20;
+            }
+            if (e.code === 'ArrowLeft' && player.dx === 0) {
+                player.dx = -20;
+                player.dy = 0;
+            }
+            if (e.code === 'ArrowRight' && player.dx === 0) {
+                player.dx = 20;
+                player.dy = 0;
+            }
+        });
+
+        // Handle chat input
+        chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                socket.emit('chatMessage', chatInput.value.trim());
+                chatInput.value = '';
+            }
+        });
+
+        // Socket events
+        socket.on('updatePlayers', updatedPlayers => {
+            players = updatedPlayers;
+        });
+
+        socket.on('updateLeaderboard', leaderboard => {
+            leaderboardList.innerHTML = leaderboard.map((entry, index) => `
+                <li>${index + 1}. ${entry.name}: ${entry.score}</li>
+            `).join('');
+        });
+
+        socket.on('chatMessage', message => {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver) requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
