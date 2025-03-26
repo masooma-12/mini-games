@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Game Hub - Play Mini Games</title>
+    <style>
+        :root {
+            --neon-pink: #ff6ec7;
+            --neon-blue: #00f9ff;
+            --neon-purple: #9d4dff;
+            --neon-green: #00ff9d;
+            --dark-bg: #0f0f1a;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Rubik Mono One', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: glow 2s infinite alternate;
+        }
+
+        .title {
+            font-size: 3rem;
+            margin: 0;
+            color: var(--neon-pink);
+            text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+        }
+
+        .subtitle {
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 20px;
+        }
+
+        .game-card {
+            background: rgba(15, 15, 26, 0.8);
+            border: 2px solid var(--neon-purple);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(157, 77, 255, 0.3);
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 0 25px var(--neon-purple);
+            border-color: var(--neon-green);
+        }
+
+        .game-card h2 {
+            color: var(--neon-green);
+            margin-top: 0;
+        }
+
+        .game-card p {
+            color: #ccc;
+            min-height: 60px;
+        }
+
+        .play-btn {
+            background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple));
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: var(--neon-blue);
+            font-size: 0.9rem;
+        }
+
+        .game-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        /* Modal styles */
+        .game-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-modal iframe {
+            width: 80%;
+            height: 80%;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 30px var(--neon-purple);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--neon-pink);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+            }
+            to {
+                text-shadow: 0 0 15px var(--neon-pink), 0 0 30px var(--neon-pink), 0 0 40px var(--neon-purple);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            .game-grid {
+                grid-template-columns: 1fr;
+            }
+            .game-modal iframe {
+                width: 95%;
+                height: 70%;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">🕹️ ARCADE GAME HUB 🕹️</h1>
+            <p class="subtitle">Play all your favorite mini games in one place!</p>
+        </header>
+        
+        <div class="game-grid" id="gameContainer">
+            <!-- Games will be added by JavaScript -->
+        </div>
+        
+        <footer class="footer">
+            <p>Created with ❤️ for gamers everywhere</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Array of your games with icons and descriptions
+        const games = [
+            {
+                title: "Flappy Bird Adventure",
+                icon: "🐦",
+                desc: "Navigate through pipes in this addictive flying game",
+                file: "games/flappybird-game/index.html"
+            },
+            {
+                title: "Snake Game",
+                icon: "🐍",
+                desc: "Classic snake game with modern neon visuals",
+                file: "games/snake-game/index.html"
+            },
+            {
+                title: "Sudoku Challenge",
+                icon: "🧩",
+                desc: "Test your logic with this number puzzle game",
+                file: "games/sudokuc-game/index.html"
+            },
+            {
+                title: "Connect Four",
+                icon: "🔴",
+                desc: "Strategic disc-dropping game for two players",
+                file: "games/connectfour-game/index.html"
+            },
+            {
+                title: "Ghost Escape",
+                icon: "👻",
+                desc: "Help the ghost navigate through a haunted maze",
+                file: "games/ghost-game/index.html"
+            },
+            {
+                title: "1v1 Battle",
+                icon: "⚔️",
+                desc: "Head-to-head combat game with special powers",
+                file: "games/1v1/index.html"
+            },
+            {
+                title: "Bike Race",
+                icon: "🚴",
+                desc: "Extreme stunt biking with physics challenges",
+                file: "games/bike-game/index.html"
+            },
+            {
+                title: "Pac-Man",
+                icon: "👾",
+                desc: "Classic arcade maze chase with power pellets",
+                file: "games/pacman-game/index.html"
+            },
+            {
+                title: "Block Puzzle",
+                icon: "🧊",
+                desc: "Tetris-inspired block stacking challenge",
+                file: "games/blocks-game/index.html"
+            },
+            {
+                title: "Sudoku Extreme",
+                icon: "🔢",
+                desc: "Harder puzzles for advanced players",
+                file: "games/sudoku-game/index.html"
+            }
+        ];
+
+        // Function to load games into the grid
+        function loadGames() {
+            const gameContainer = document.getElementById('gameContainer');
+            
+            games.forEach(game => {
+                const gameCard = document.createElement('div');
+                gameCard.className = 'game-card';
+                gameCard.innerHTML = `
+                    <span class="game-icon">${game.icon}</span>
+                    <h2>${game.title}</h2>
+                    <p>${game.desc}</p>
+                    <button class="play-btn" onclick="loadGame('${game.file}')">PLAY NOW</button>
+                `;
+                gameContainer.appendChild(gameCard);
+            });
+        }
+
+        // Function to load a selected game
+        function loadGame(gameFile) {
+            if (!gameFile) {
+                alert('This game is not available yet!');
+                return;
+            }
+
+            // Create modal container
+            const modal = document.createElement('div');
+            modal.className = 'game-modal';
+            
+            // Create iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = gameFile;
+            
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-btn';
+            closeBtn.textContent = 'X';
+            closeBtn.onclick = () => modal.remove();
+            
+            modal.appendChild(iframe);
+            modal.appendChild(closeBtn);
+            document.body.appendChild(modal);
+        }
+
+        // Add animation to game cards when they come into view
+        function animateCards() {
+            const cards = document.querySelectorAll('.game-card');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = 1;
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            cards.forEach(card => {
+                card.style.opacity = 0;
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'all 0.5s ease-out';
+                observer.observe(card);
+            });
+        }
+
+        // Initialize when page loads
+        window.onload = function() {
+            loadGames();
+            setTimeout(animateCards, 100);
+        };
+    </script>
+</body>
+</html>
