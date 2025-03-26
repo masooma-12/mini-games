@@ -223,44 +223,47 @@
 
     // Generate a solved Sudoku grid
     function generateSolvedGrid(size) {
-      const grid = Array.from({ length: size }, () => Array(size).fill(0));
-      solveSudoku(grid, size);
-      return grid;
-    }
-
-    // Solve Sudoku (backtracking algorithm)
-    function solveSudoku(grid, size) {
-      for (let row = 0; row < size; row++) {
-        for (let col = 0; col < size; col++) {
-          if (grid[row][col] === 0) {
-            for (let num = 1; num <= size; num++) {
-              if (isValid(grid, row, col, num, size)) {
-                grid[row][col] = num;
-                if (solveSudoku(grid, size)) return true;
-                grid[row][col] = 0;
-              }
-            }
-            return false;
-          }
-        }
+      // Create a valid solved grid based on size
+      if (size === 4) {
+        return [
+          [1, 2, 3, 4],
+          [3, 4, 1, 2],
+          [2, 1, 4, 3],
+          [4, 3, 2, 1]
+        ];
+      } else if (size === 6) {
+        return [
+          [1, 2, 3, 4, 5, 6],
+          [4, 5, 6, 1, 2, 3],
+          [2, 1, 4, 3, 6, 5],
+          [3, 6, 5, 2, 1, 4],
+          [5, 3, 1, 6, 4, 2],
+          [6, 4, 2, 5, 3, 1]
+        ];
+      } else if (size === 8) {
+        return [
+          [1, 2, 3, 4, 5, 6, 7, 8],
+          [3, 4, 5, 6, 7, 8, 1, 2],
+          [2, 1, 4, 3, 6, 5, 8, 7],
+          [5, 3, 1, 7, 8, 2, 4, 6],
+          [4, 6, 8, 5, 1, 7, 2, 3],
+          [7, 8, 6, 2, 3, 4, 5, 1],
+          [6, 5, 7, 8, 2, 1, 3, 4],
+          [8, 7, 2, 1, 4, 3, 6, 5]
+        ];
+      } else { // 9x9
+        return [
+          [5, 3, 4, 6, 7, 8, 9, 1, 2],
+          [6, 7, 2, 1, 9, 5, 3, 4, 8],
+          [1, 9, 8, 3, 4, 2, 5, 6, 7],
+          [8, 5, 9, 7, 6, 1, 4, 2, 3],
+          [4, 2, 6, 8, 5, 3, 7, 9, 1],
+          [7, 1, 3, 9, 2, 4, 8, 5, 6],
+          [9, 6, 1, 5, 3, 7, 2, 8, 4],
+          [2, 8, 7, 4, 1, 9, 6, 3, 5],
+          [3, 4, 5, 2, 8, 6, 1, 7, 9]
+        ];
       }
-      return true;
-    }
-
-    // Check if a number is valid in a cell
-    function isValid(grid, row, col, num, size) {
-      for (let i = 0; i < size; i++) {
-        if (grid[row][i] === num || grid[i][col] === num) return false;
-      }
-      const subgridSize = Math.sqrt(size);
-      const subgridRowStart = Math.floor(row / subgridSize) * subgridSize;
-      const subgridColStart = Math.floor(col / subgridSize) * subgridSize;
-      for (let i = 0; i < subgridSize; i++) {
-        for (let j = 0; j < subgridSize; j++) {
-          if (grid[subgridRowStart + i][subgridColStart + j] === num) return false;
-        }
-      }
-      return true;
     }
 
     // Check solution
@@ -294,10 +297,14 @@
         grid[i] = [];
         for (let j = 0; j < size; j++) {
           const value = sudokuGrid.children[i * size + j].value;
-          if (!value || isNaN(value) || value < 1 || value > size) return false;
-          grid[i][j] = parseInt(value);
+          if (!value || isNaN(value)) return false;
+          const num = parseInt(value);
+          if (num < 1 || num > size) return false;
+          grid[i][j] = num;
         }
       }
+      
+      // Check rows and columns
       for (let i = 0; i < size; i++) {
         const row = new Set();
         const col = new Set();
@@ -308,6 +315,24 @@
           col.add(grid[j][i]);
         }
       }
+      
+      // Check subgrids for 4x4, 6x6, and 9x9
+      if (size === 4 || size === 6 || size === 9) {
+        const subgridSize = Math.sqrt(size);
+        for (let boxRow = 0; boxRow < size; boxRow += subgridSize) {
+          for (let boxCol = 0; boxCol < size; boxCol += subgridSize) {
+            const subgrid = new Set();
+            for (let i = 0; i < subgridSize; i++) {
+              for (let j = 0; j < subgridSize; j++) {
+                const num = grid[boxRow + i][boxCol + j];
+                if (subgrid.has(num)) return false;
+                subgrid.add(num);
+              }
+            }
+          }
+        }
+      }
+      
       return true;
     }
 
